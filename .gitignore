@@ -1,0 +1,23 @@
+# Secrets
+.env
+*.env
+
+# Database (berisi findings pribadi)
+database/
+*.db
+*.sqlite3
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.python-version
+
+# Logs
+*.log
+log/
+
+# OS
+.DS_Store
+Thumbs.db

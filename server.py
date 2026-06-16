@@ -1,0 +1,111 @@
+"""
+AGY Bug Bounty MCP Server - Main Entry Point
+OWASP Top 10 2025 Vulnerability Assessment Platform
+
+Usage:
+    python server.py                    # stdio transport (for Claude Desktop)
+    python server.py --transport sse    # SSE transport (for web/remote)
+
+Claude Desktop config (claude_desktop_config.json):
+    {
+        "mcpServers": {
+            "agy-bugbounty": {
+                "command": "python",
+                "args": ["/path/to/bugbounty-mcp/server.py"],
+                "env": {
+                    "SHODAN_API_KEY": "...",
+                    "GITHUB_TOKEN": "..."
+                }
+            }
+        }
+    }
+"""
+import sys
+import os
+import importlib
+
+# Ensure the project root is in sys.path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from dotenv import load_dotenv
+load_dotenv()
+
+# ─── Import the shared FastMCP instance (+ Universal System Prompt) ──────────
+from mcp_instance import mcp, _SYSTEM_PROMPT
+
+# ─── Import all tool modules (each registers its tools via @mcp.tool()) ───────
+_TOOL_MODULES = [
+    "tools.a01_access_control",
+    "tools.a02_misconfiguration",
+    "tools.a03_supply_chain",
+    "tools.a04_cryptography",
+    "tools.a05_injection",
+    "tools.a06_insecure_design",
+    "tools.a07_authentication",
+    "tools.a08_integrity",
+    "tools.a09_logging",
+    "tools.a10_exceptions",
+    "tools.recon",
+    "tools.reporting",
+]
+
+_loaded = []
+_failed = []
+
+for module_name in _TOOL_MODULES:
+    try:
+        importlib.import_module(module_name)
+        _loaded.append(module_name)
+    except Exception as e:
+        _failed.append((module_name, str(e)))
+        # Don't crash - continue loading other modules
+        print(f"[WARN] Failed to load {module_name}: {e}", file=sys.stderr)
+
+if __name__ == "__main__":
+    import argparse
+    from config import VERIFY_SSL
+
+    parser = argparse.ArgumentParser(
+        description="AGY Bug Bounty MCP Server - OWASP Top 10 2025"
+    )
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "sse"],
+        default="stdio",
+        help="Transport type: stdio (default) or sse (HTTP/SSE for remote)",
+    )
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host for SSE transport (default: 127.0.0.1; use 0.0.0.0 for remote access — NOT recommended without auth)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port for SSE transport (default: 8000)",
+    )
+    args = parser.parse_args()
+
+    print(f"[AGY] Loaded {len(_loaded)}/{len(_TOOL_MODULES)} tool modules", file=sys.stderr)
+    if _failed:
+        for mod, err in _failed:
+            print(f"[AGY] FAILED: {mod} - {err}", file=sys.stderr)
+
+    # ── Confirm Universal System Prompt injection ──────────────────────────────
+    print(
+        f"[AGY] ✅ Universal Bug Bounty System Prompt ACTIVE "
+        f"({len(_SYSTEM_PROMPT):,} chars) — "
+        "all connected MCP clients will adopt the AGY persona.",
+        file=sys.stderr,
+    )
+
+    if not VERIFY_SSL:
+        print("[AGY] WARNING: SSL verification is disabled (VERIFY_SSL=false)", file=sys.stderr)
+
+    if args.transport == "sse":
+        print(f"[AGY] Starting SSE server on {args.host}:{args.port}", file=sys.stderr)
+        mcp.run(transport="sse", host=args.host, port=args.port)
+    else:
+        print("[AGY] Starting stdio server...", file=sys.stderr)
+        mcp.run(transport="stdio")

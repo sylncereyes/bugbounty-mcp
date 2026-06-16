@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ target.program_name }} - Bug Bounty Report</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
+    --critical: #f85149; --high: #ff7b72; --medium: #e3b341;
+    --low: #3fb950; --info: #58a6ff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+
+  /* Header */
+  .header { background: linear-gradient(135deg, #1a2332 0%, #0d1117 100%); border: 1px solid var(--border); border-radius: 12px; padding: 40px; margin-bottom: 32px; position: relative; overflow: hidden; }
+  .header::before { content: ''; position: absolute; top: -50%; right: -50%; width: 100%; height: 200%; background: radial-gradient(circle, rgba(88,166,255,0.05) 0%, transparent 70%); }
+  .header-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.3); border-radius: 20px; padding: 4px 14px; font-size: 12px; color: var(--accent); margin-bottom: 16px; }
+  .header h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+  .header-meta { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 16px; }
+  .meta-item { display: flex; flex-direction: column; }
+  .meta-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .meta-value { font-size: 14px; font-weight: 500; color: var(--text); margin-top: 2px; }
+
+  /* Risk Rating */
+  .risk-bar { display: flex; align-items: center; gap: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 24px; }
+  .risk-label { font-size: 13px; color: var(--muted); min-width: 80px; }
+  .risk-track { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .risk-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+  .risk-fill.critical { background: var(--critical); }
+  .risk-fill.high { background: var(--high); }
+  .risk-fill.medium { background: var(--medium); }
+  .risk-fill.low { background: var(--low); }
+  .risk-value { font-weight: 700; font-size: 15px; min-width: 60px; text-align: right; }
+
+  /* Stats Grid */
+  .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 32px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; text-align: center; transition: transform 0.2s; }
+  .stat-card:hover { transform: translateY(-2px); }
+  .stat-card.critical { border-top: 3px solid var(--critical); }
+  .stat-card.high { border-top: 3px solid var(--high); }
+  .stat-card.medium { border-top: 3px solid var(--medium); }
+  .stat-card.low { border-top: 3px solid var(--low); }
+  .stat-card.info { border-top: 3px solid var(--info); }
+  .stat-number { font-size: 36px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+  .stat-card.critical .stat-number { color: var(--critical); }
+  .stat-card.high .stat-number { color: var(--high); }
+  .stat-card.medium .stat-number { color: var(--medium); }
+  .stat-card.low .stat-number { color: var(--low); }
+  .stat-card.info .stat-number { color: var(--info); }
+  .stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+
+  /* Section */
+  .section { margin-bottom: 32px; }
+  .section-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .section-title .icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 14px; }
+
+  /* Finding Card */
+  .finding-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+  .finding-header { display: flex; align-items: center; gap: 12px; padding: 16px 20px; cursor: pointer; }
+  .severity-badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .severity-badge.Critical { background: rgba(248,81,73,0.15); color: var(--critical); border: 1px solid rgba(248,81,73,0.3); }
+  .severity-badge.High { background: rgba(255,123,114,0.15); color: var(--high); border: 1px solid rgba(255,123,114,0.3); }
+  .severity-badge.Medium { background: rgba(227,179,65,0.15); color: var(--medium); border: 1px solid rgba(227,179,65,0.3); }
+  .severity-badge.Low { background: rgba(63,185,80,0.15); color: var(--low); border: 1px solid rgba(63,185,80,0.3); }
+  .severity-badge.Informational { background: rgba(88,166,255,0.15); color: var(--info); border: 1px solid rgba(88,166,255,0.3); }
+  .finding-title { flex: 1; font-size: 15px; font-weight: 500; }
+  .finding-id { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); }
+  .owasp-tag { font-size: 11px; background: rgba(88,166,255,0.1); color: var(--accent); border: 1px solid rgba(88,166,255,0.2); border-radius: 4px; padding: 2px 8px; }
+  .cvss-score { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; }
+
+  .finding-body { padding: 0 20px 20px; border-top: 1px solid var(--border); }
+  .field { margin-top: 16px; }
+  .field-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
+  .field-value { font-size: 14px; }
+  .url-value { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent); word-break: break-all; }
+  .code-block { background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; margin-top: 6px; }
+  .finding-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: rgba(255,255,255,0.04); padding: 12px 16px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); text-align: left; }
+  td { padding: 12px 16px; font-size: 13px; border-top: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Footer */
+  .footer { text-align: center; padding: 24px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); margin-top: 40px; }
+  .footer strong { color: var(--accent); }
+
+  @media (max-width: 768px) {
+    .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    .finding-grid { grid-template-columns: 1fr; }
+    .header-meta { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-badge">🎯 Bug Bounty Report</div>
+    <h1>{{ target.program_name }}</h1>
+    <p style="color: var(--muted); font-size: 14px;">Security Assessment by AGY — Powered by OWASP Top 10 2025</p>
+    <div class="header-meta">
+      <div class="meta-item"><span class="meta-label">Target Domain</span><span class="meta-value">{{ target.domain }}</span></div>
+      <div class="meta-item"><span class="meta-label">Platform</span><span class="meta-value">{{ target.platform or 'N/A' }}</span></div>
+      <div class="meta-item"><span class="meta-label">Bounty Range</span><span class="meta-value">{{ target.bounty_range or 'N/A' }}</span></div>
+      <div class="meta-item"><span class="meta-label">Report Date</span><span class="meta-value">{{ report_date }}</span></div>
+      <div class="meta-item"><span class="meta-label">Total Findings</span><span class="meta-value">{{ stats.total }}</span></div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card critical"><div class="stat-number">{{ stats.Critical }}</div><div class="stat-label">Critical</div></div>
+    <div class="stat-card high"><div class="stat-number">{{ stats.High }}</div><div class="stat-label">High</div></div>
+    <div class="stat-card medium"><div class="stat-number">{{ stats.Medium }}</div><div class="stat-label">Medium</div></div>
+    <div class="stat-card low"><div class="stat-number">{{ stats.Low }}</div><div class="stat-label">Low</div></div>
+    <div class="stat-card info"><div class="stat-number">{{ stats.Informational }}</div><div class="stat-label">Info</div></div>
+  </div>
+
+  <!-- OWASP Category Breakdown -->
+  {% if owasp_stats %}
+  <div class="section">
+    <div class="section-title"><span class="icon">📊</span> OWASP Category Breakdown</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>OWASP Category</th><th>Findings</th><th>Max Severity</th></tr></thead>
+        <tbody>
+          {% for cat, data in owasp_stats.items() %}
+          <tr>
+            <td>{{ cat }}</td>
+            <td>{{ data.count }}</td>
+            <td><span class="severity-badge {{ data.max_severity }}">{{ data.max_severity }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Findings by Severity -->
+  {% for severity in ['Critical', 'High', 'Medium', 'Low', 'Informational'] %}
+  {% set sev_findings = findings | selectattr('severity', 'equalto', severity) | list %}
+  {% if sev_findings %}
+  <div class="section">
+    <div class="section-title">
+      <span class="icon">{{ {'Critical': '🔴', 'High': '🟠', 'Medium': '🟡', 'Low': '🟢', 'Informational': '🔵'}[severity] }}</span>
+      {{ severity }} Severity ({{ sev_findings | length }})
+    </div>
+    {% for finding in sev_findings %}
+    <div class="finding-card">
+      <div class="finding-header">
+        <span class="severity-badge {{ finding.severity }}">{{ finding.severity }}</span>
+        <span class="finding-title">{{ finding.title }}</span>
+        {% if finding.owasp_category %}<span class="owasp-tag">{{ finding.owasp_category }}</span>{% endif %}
+        {% if finding.cvss_score %}<span class="cvss-score" style="color: var(--{{ finding.severity | lower }})">CVSS {{ "%.1f"|format(finding.cvss_score) }}</span>{% endif %}
+        <span class="finding-id">#{{ finding.id }}</span>
+      </div>
+      <div class="finding-body">
+        {% if finding.url %}
+        <div class="field"><div class="field-label">URL</div><div class="url-value">{{ finding.url }}</div></div>
+        {% endif %}
+        {% if finding.description %}
+        <div class="field"><div class="field-label">Description</div><div class="field-value">{{ finding.description }}</div></div>
+        {% endif %}
+        <div class="finding-grid">
+          {% if finding.parameter %}
+          <div class="field"><div class="field-label">Parameter</div><div class="code-block">{{ finding.parameter }}</div></div>
+          {% endif %}
+          {% if finding.payload %}
+          <div class="field"><div class="field-label">Payload</div><div class="code-block">{{ finding.payload }}</div></div>
+          {% endif %}
+        </div>
+        {% if finding.steps_to_reproduce %}
+        <div class="field"><div class="field-label">Steps to Reproduce</div><div class="code-block">{{ finding.steps_to_reproduce }}</div></div>
+        {% endif %}
+        <div class="finding-grid">
+          {% if finding.impact %}
+          <div class="field"><div class="field-label">Impact</div><div class="field-value">{{ finding.impact }}</div></div>
+          {% endif %}
+          {% if finding.remediation %}
+          <div class="field"><div class="field-label">Remediation</div><div class="field-value">{{ finding.remediation }}</div></div>
+          {% endif %}
+        </div>
+        <div class="finding-grid" style="margin-top: 16px;">
+          <div class="field"><div class="field-label">Status</div><span class="severity-badge {{ finding.severity }}">{{ finding.status }}</span></div>
+          <div class="field"><div class="field-label">Found On</div><div class="field-value">{{ finding.created_at }}</div></div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endfor %}
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>Report generated by <strong>AGY Bug Bounty Assistant</strong> — Powered by OWASP Top 10 2025</p>
+    <p style="margin-top: 4px;">⚠️ This report is confidential. For authorized security testing purposes only.</p>
+  </div>
+</div>
+</body>
+</html>

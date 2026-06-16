@@ -1,0 +1,52 @@
+# AGY Bug Bounty MCP Server - Dependencies
+# Install with: pip install -r requirements.txt
+
+# MCP Framework
+mcp>=1.0.0
+
+# HTTP Client (async + sync)
+httpx[http2]>=0.27.0
+requests>=2.31.0
+
+# DNS & Network
+dnspython>=2.6.1
+python-whois>=0.9.4
+
+# SSL/TLS Analysis
+sslyze>=6.0.0
+cryptography>=42.0.0
+
+# JWT Analysis
+pyjwt>=2.8.0
+
+# Environment & Config
+python-dotenv>=1.0.1
+
+# Report Generation
+jinja2>=3.1.4
+markdown>=3.6
+
+# Rich terminal output (for logging)
+rich>=13.7.0
+colorama>=0.4.6
+
+# Async utilities
+aiofiles>=23.2.1
+aiohttp>=3.9.5
+
+# Data parsing
+beautifulsoup4>=4.12.3
+lxml>=5.2.2
+
+# URL parsing
+tldextract>=5.1.2
+urllib3>=2.2.1
+
+# Optional: Shodan API
+shodan>=1.31.0
+
+# Optional: GitHub API
+PyGithub>=2.3.0
+
+# CVSS calculation
+cvss>=3.0
