@@ -47,6 +47,8 @@ _TOOL_MODULES = [
     "tools.a10_exceptions",
     "tools.recon",
     "tools.reporting",
+    "tools.intelligence",
+    "tools.hunter",
 ]
 
 _loaded = []
@@ -105,7 +107,11 @@ if __name__ == "__main__":
 
     if args.transport == "sse":
         print(f"[AGY] Starting SSE server on {args.host}:{args.port}", file=sys.stderr)
-        mcp.run(transport="sse", host=args.host, port=args.port)
+        # mcp>=1.27 removed host/port kwargs from .run() — they're set on settings.
+        # See mcp.server.fastmcp.run_sse_async: it reads self.settings.host/port.
+        mcp.settings.host = args.host
+        mcp.settings.port = args.port
+        mcp.run(transport="sse")
     else:
         print("[AGY] Starting stdio server...", file=sys.stderr)
         mcp.run(transport="stdio")
