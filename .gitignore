@@ -6,6 +6,12 @@
 database/
 *.db
 *.sqlite3
+database/*.backup_*
+
+# Scan output (berisi data target real - JANGAN commit)
+reports/
+# Catatan: templates/report.html adalah template HTML, BUKAN output scan,
+# dan sudah ter-track di path templates/ (tidak di bawah reports/)
 
 # Python
 venv/
@@ -13,6 +19,8 @@ __pycache__/
 *.pyc
 *.pyo
 .python-version
+.mypy_cache/
+.pytest_cache/
 
 # Logs
 *.log
@@ -21,3 +29,9 @@ log/
 # OS
 .DS_Store
 Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
