@@ -75,6 +75,8 @@ _TOOL_MODULES = [
     "tools.jwt_advanced",
     "tools.oob_testing",
     "tools.impact_scoring",
+    "tools.subdomain_brute",
+    "tools.graphql_mutation",
 ]
 
 _loaded = []
