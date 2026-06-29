@@ -1,5 +1,4 @@
-"""
-AGY Bug Bounty MCP Server - Main Entry Point
+"""StealthVision-MCP Server - Main Entry Point
 OWASP Top 10 2025 Vulnerability Assessment Platform
 
 Usage:
@@ -9,7 +8,7 @@ Usage:
 Claude Desktop config (claude_desktop_config.json):
     {
         "mcpServers": {
-            "agy-bugbounty": {
+            "stealthvision": {
                 "command": "python",
                 "args": ["/path/to/bugbounty-mcp/server.py"],
                 "env": {
@@ -91,7 +90,7 @@ if __name__ == "__main__":
     from config import VERIFY_SSL
 
     parser = argparse.ArgumentParser(
-        description="AGY Bug Bounty MCP Server - OWASP Top 10 2025"
+        description="StealthVision-MCP Server - OWASP Top 10 2025"
     )
     parser.add_argument(
         "--transport",
