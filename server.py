@@ -66,6 +66,7 @@ _TOOL_MODULES = [
     "tools.portswigger_kb",
     "tools.portswigger_notes_kb",
     "tools.rfc_kb",
+    "tools.rag_engine",
 ]
 
 _loaded = []
