@@ -49,6 +49,23 @@ _TOOL_MODULES = [
     "tools.reporting",
     "tools.intelligence",
     "tools.hunter",
+    "tools.knowledge_base",
+    "tools.owasp_wstg",
+    "tools.owasp_api_top10",
+    "tools.cve_kb",
+    "tools.cwe_kb",
+    "tools.htb_kb",
+    "tools.thm_kb",
+    "tools.patt_kb",
+    "tools.lolbins_kb",
+    "tools.attck_capec_kb",
+    "tools.exploitdb_kb",
+    "tools.nuclei_kb",
+    "tools.hacktricks_kb",
+    "tools.seclists_kb",
+    "tools.portswigger_kb",
+    "tools.portswigger_notes_kb",
+    "tools.rfc_kb",
 ]
 
 _loaded = []
