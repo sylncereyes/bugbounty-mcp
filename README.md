@@ -7,7 +7,7 @@
 
 ## 🎯 Gambaran Umum
 
-**StealthVision-MCP** adalah platform asisten keamanan yang dirancang khusus untuk mempermudah alur kerja bug bounty hunting dan penetration testing. Dengan protokol MCP, asisten AI Anda dapat mengeksekusi **43 modul uji keamanan** secara dinamis, menyimpan hasilnya ke database SQLite lokal, dan mengekspor laporan profesional dalam format HTML, Markdown, atau CSV.
+**StealthVision-MCP** adalah platform asisten keamanan yang dirancang khusus untuk mempermudah alur kerja bug bounty hunting dan penetration testing. Dengan protokol MCP, asisten AI Anda dapat mengeksekusi **44 modul uji keamanan** secara dinamis, menyimpan hasilnya ke database SQLite lokal, dan mengekspor laporan profesional dalam format HTML, Markdown, atau CSV.
 
 **RAG Engine terintegrasi** - modul `tools/rag_engine.py` otomatis mencari knowledge base saat AI mendeteksi intent vulnerability/methodology.
 
@@ -61,12 +61,12 @@ git clone --depth 1 https://github.com/projectdiscovery/nuclei-templates knowled
 
 # 6. Jalankan server
 python server.py
-# Output sukses: [StealthVision] Loaded 43/43 tool modules
+# Output sukses: [StealthVision] Loaded 44/44 tool modules
 ```
 
 ---
 
-## 🧰 Modules Inventory (43 Modules)
+## 🧰 Modules Inventory (44 Modules)
 
 ### OWASP Top 10 Modules
 - `a01_access_control`, `a02_misconfiguration`, `a03_supply_chain`
