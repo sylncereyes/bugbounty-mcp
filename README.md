@@ -277,8 +277,7 @@ Total **86 modul uji keamanan** yang ter-register via FastMCP, diorganisir per k
 | **A10 Exceptions** | `a10_exceptions.py` | `check_fail_open`, `error_disclosure_check`, `error_handling_analysis`, `exception_information_disclosure`, `timing_attack_check` |
 | **Recon** | `recon.py` | `add_target`, `delete_target`, `list_targets`, `dns_lookup`, `whois_lookup`, `recon_domain` |
 | **Reporting** | `reporting.py` | `save_finding_tool`, `list_findings`, `update_finding_status_tool`, `generate_report`, `generate_executive_summary`, `export_findings_csv`, `cvss_calculator` |
-| **Intelligence** | `intelligence.py` | `osint_recon`, `vulnx_enrich_finding`, `vulnx_exploitable`, `msf_module_search`, `searchsploit_query` |
-| **Hunter** | `hunter.py` | `define_hunt_goal`, `exploit_chain`, `escalation_advisor`, `hidden_endpoint_discovery`, `logic_flow_mapper` |
+| **Intelligence** | `intelligence.py` | `osint_recon`, `vulnx_enrich_finding`, `vulnx_exploitable`, `msf_module_search`, `searchsploit_query` |\n| **Hunter** | `hunter.py` | `define_hunt_goal`, `exploit_chain`, `escalation_advisor`, `hidden_endpoint_discovery`, `logic_flow_mapper` |\n\n| **ATT&CK+CAPEC** | `attck_capec_kb.py` | `search_attck`, `get_attck_technique`, `search_capec`, `get_capec_by_technique`, `get_attck_tactics` |\n| **OWASP API Security** | `owasp_api_top10.py` | `api_top10_search`, `api_top10_get`, `api_top10_list`, `api_top10_sync` |\n| **ExploitDB** | `exploitdb_kb.py` | `search_exploits`, `get_exploit`, `list_platforms`, `sync_exploitdb` |\n| **Hacktricks** | `hacktricks_kb.py` | `search_hacktricks`, `get_hacktricks_by_path`, `sync_hacktricks` |\n| **Nuclei** | `nuclei_kb.py` | `search_nuclei_templates`, `get_nuclei_template`, `sync_nuclei`, `list_nuclei_severities` |\n\n## 🗂️ Knowledge Base Modules (NEW)
 
 ---
 
