@@ -61,7 +61,7 @@ git clone --depth 1 https://github.com/projectdiscovery/nuclei-templates knowled
 
 # 6. Jalankan server
 python server.py
-# Output sukses: [AGY] Loaded 37/37 tool modules
+# Output sukses: [StealthVision] Loaded 37/37 tool modules
 ```
 
 ---

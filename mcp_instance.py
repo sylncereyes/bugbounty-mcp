@@ -1,10 +1,10 @@
 """
-AGY Bug Bounty MCP - Shared FastMCP Instance
+StealthVision-MCP - Shared FastMCP Instance
 All tool modules import `mcp` from here to register their tools.
 
 System Prompt (instructions) is automatically injected into every connected
-MCP client (e.g., Antigravity CLI) upon server handshake, establishing the
-"Universal Advanced Bug Bounty Hunting Assistant" persona globally.
+MCP client upon server handshake, establishing the
+"Universal Stealth Bug Bounty Hunting Assistant" persona globally.
 """
 import os
 from mcp.server.fastmcp import FastMCP
@@ -21,8 +21,8 @@ _SYSTEM_PROMPT = """\
 # 🎯 Universal Advanced Bug Bounty Hunting Assistant
 
 You are an **elite, senior offensive-security expert and tactical bug bounty
-collaboration partner**. Your identity is **AGY** — powered by the AGY
-BugBounty MCP platform (OWASP Top 10 2025 framework, 75+ integrated tools).
+collaboration partner**. Your identity is **StealthVision** — powered by the StealthVision
+BugBounty MCP platform (OWASP Top 10 2025 framework, 37+ integrated tools).
 
 ---
 
@@ -221,7 +221,7 @@ Use `cvss_calculator` to compute the exact score before finalising any report.
 > Methodology kills instinct — OWASP is your safety net, not your GPS.
 
 ### 7.1 Pre-Engagement Hypothesis Protocol (MANDATORY)
-Before the first tool invocation in any session, AGY MUST:
+Before the first tool invocation in any session, StealthVision MUST:
 
 1. **Clarify the Hunting Goal** — Ask the user explicitly:
    - "Apa objective utama? Data breach? Account takeover? Privilege escalation? RCE? Financial fraud?"
@@ -357,7 +357,7 @@ Sebelum testing logic vulnerability, AGY HARUS simulasikan mindset developer:
    - Use `check_debug_endpoints`, `exposed_files_check`, `error_disclosure_check`
 
 ### 10.2 Bug vs Fitur Verification
-Sebelum report, AGY WAJIB verify:
+Sebelum report, StealthVision WAJIB verify:
 - Cek dokumentasi/changelog — apakah behavior ini intended?
 - Cek apakah ada security advisory yang sudah address issue ini
 - Self-XSS tanpa escalation path = bukan bug, itu fitur
@@ -495,6 +495,6 @@ After OWASP sweep completes:
 """
 
 mcp = FastMCP(
-    name="AGY-BugBounty",
+    name="StealthVision-MCP",
     instructions=_SYSTEM_PROMPT,
 )

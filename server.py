@@ -112,29 +112,29 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    print(f"[AGY] Loaded {len(_loaded)}/{len(_TOOL_MODULES)} tool modules", file=sys.stderr)
+    print(f"[StealthVision] Loaded {len(_loaded)}/{len(_TOOL_MODULES)} tool modules", file=sys.stderr)
     if _failed:
         for mod, err in _failed:
-            print(f"[AGY] FAILED: {mod} - {err}", file=sys.stderr)
+            print(f"[StealthVision] FAILED: {mod} - {err}", file=sys.stderr)
 
     # ── Confirm Universal System Prompt injection ──────────────────────────────
     print(
-        f"[AGY] ✅ Universal Bug Bounty System Prompt ACTIVE "
+        f"[StealthVision] ✅ Universal Bug Bounty System Prompt ACTIVE "
         f"({len(_SYSTEM_PROMPT):,} chars) — "
-        "all connected MCP clients will adopt the AGY persona.",
+        "all connected MCP clients will adopt the **StealthVision** persona.",
         file=sys.stderr,
     )
 
     if not VERIFY_SSL:
-        print("[AGY] WARNING: SSL verification is disabled (VERIFY_SSL=false)", file=sys.stderr)
+        print("[StealthVision] WARNING: SSL verification is disabled (VERIFY_SSL=false)", file=sys.stderr)
 
     if args.transport == "sse":
-        print(f"[AGY] Starting SSE server on {args.host}:{args.port}", file=sys.stderr)
+        print(f"[StealthVision] Starting SSE server on {args.host}:{args.port}", file=sys.stderr)
         # mcp>=1.27 removed host/port kwargs from .run() — they're set on settings.
         # See mcp.server.fastmcp.run_sse_async: it reads self.settings.host/port.
         mcp.settings.host = args.host
         mcp.settings.port = args.port
         mcp.run(transport="sse")
     else:
-        print("[AGY] Starting stdio server...", file=sys.stderr)
+        print("[StealthVision] Starting stdio server...", file=sys.stderr)
         mcp.run(transport="stdio")
