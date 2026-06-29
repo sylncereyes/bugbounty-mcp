@@ -7,7 +7,9 @@
 
 ## 🎯 Gambaran Umum
 
-**StealthVision-MCP** adalah platform asisten keamanan yang dirancang khusus untuk mempermudah alur kerja bug bounty hunting dan penetration testing. Dengan protokol MCP, asisten AI Anda dapat mengeksekusi **31 modul uji keamanan** secara dinamis, menyimpan hasilnya ke database SQLite lokal, dan mengekspor laporan profesional dalam format HTML, Markdown, atau CSV.
+**StealthVision-MCP** adalah platform asisten keamanan yang dirancang khusus untuk mempermudah alur kerja bug bounty hunting dan penetration testing. Dengan protokol MCP, asisten AI Anda dapat mengeksekusi **32 modul uji keamanan** secara dinamis, menyimpan hasilnya ke database SQLite lokal, dan mengekspor laporan profesional dalam format HTML, Markdown, atau CSV.
+
+**RAG Engine terintegrasi** - modul `tools/rag_engine.py` otomatis mencari knowledge base saat AI mendeteksi intent vulnerability/methodology.
 
 ---
 
@@ -62,7 +64,7 @@ python server.py
 
 ---
 
-## 🧰 Modules Inventory (31 Modules)
+## 🧰 Modules Inventory (32 Modules)
 
 ### OWASP Top 10 Modules
 - `a01_access_control`, `a02_misconfiguration`, `a03_supply_chain`
@@ -71,6 +73,9 @@ python server.py
 
 ### Core Modules
 - `recon`, `reporting`, `intelligence`, `hunter`, `knowledge_base`
+
+### RAG Engine (NEW)
+- `rag_engine` - Retrieval-Augmented Generation untuk automated KB search
 
 ### Knowledge Base Modules
 - `attck_capec_kb` - MITRE ATT&CK + CAPEC (1,190 entries)
@@ -130,6 +135,21 @@ python server.py
 
 # ATT&CK search
 → search_attck(tactic="TA0006", technique="T1556")
+```
+
+### 3. RAG Engine Usage
+
+```
+# Smart RAG search - otomatis pilih KB sesuai intent
+→ rag_search(intent_type="vulnerability_knowledge", query="jwt bypass")
+→ rag_search(intent_type="pentest_methodology", query="sqli exploitation")
+
+# Inject vulnerability context otomatis
+→ rag_context_inject(target_vulnerability="sqli")
+→ rag_context_inject(target_vulnerability="jwt")
+
+# Cari exploits untuk CVE
+→ rag_get_exploits(cve_id="CVE-2021-41773")
 ```
 
 ---
