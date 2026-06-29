@@ -71,6 +71,7 @@ _TOOL_MODULES = [
     "tools.cloud_testing",
     "tools.git_testing",
     "tools.container_testing",
+    "tools.mode_selector",
 ]
 
 _loaded = []
