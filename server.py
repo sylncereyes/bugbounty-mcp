@@ -71,6 +71,9 @@ _TOOL_MODULES = [
     "tools.git_testing",
     "tools.container_testing",
     "tools.mode_selector",
+    "tools.js_analysis",
+    "tools.jwt_advanced",
+    "tools.oob_testing",
 ]
 
 _loaded = []
