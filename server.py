@@ -74,6 +74,7 @@ _TOOL_MODULES = [
     "tools.js_analysis",
     "tools.jwt_advanced",
     "tools.oob_testing",
+    "tools.impact_scoring",
 ]
 
 _loaded = []
