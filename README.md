@@ -13,7 +13,13 @@
 
 ## 🧠 Hunter Mindset Framework (NEW)
 
-Berbeda dari scanner generik yang mengikuti checklist OWASP secara linear, StealthVision mengadopsi **kerangka hunting berbasis intuisi** yang ditanamkan ke setiap interaksi melalui *Universal System Prompt* (23K+ karakter). Framework ini terdiri dari **13 strategi hunting** yang saling melengkapi.
+Berbeda dari scanner generik yang mengikuti checklist OWASP secara linear, StealthVision mengadopsi **kerangka hunting berbasis intuisi** yang ditanamkan ke setiap interaksi melalui *Universal System Prompt* (23K+ karakter). Framework ini terdiri dari **10 strategi hunting** yang saling melengkapi.
+
+**System Prompt otomatis di-inject** ke setiap klien MCP yang terhubung (Claude Desktop, Claude Code) saat inisialisasi server. Persona ini membentuk perilaku AI untuk:
+- Fokus pada crown jewel assets (auth, payment, admin)
+- Esalisasi findings sebelum submission
+- Hindari false positive dengan checklist internal
+- Ikuti anomali, bukan hanya checklist otomatis
 
 ---
 
@@ -125,6 +131,27 @@ python server.py
 # ATT&CK search
 → search_attck(tactic="TA0006", technique="T1556")
 ```
+
+---
+
+## ⚙️ Integrasi Claude Desktop
+
+Tambahkan server MCP ke konfigurasi Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "stealthvision": {
+      "command": "/absolute/path/to/stealthvision-mcp/venv/bin/python",
+      "args": ["/absolute/path/to/stealthvision-mcp/server.py"]
+    }
+  }
+}
+```
+
+Lokasi config file:
+- **Linux/macOS**: `~/.config/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\\Claude\\claude_desktop_config.json`
 
 ---
 
