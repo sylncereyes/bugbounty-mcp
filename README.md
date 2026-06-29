@@ -1,13 +1,12 @@
-# AGY Bug Bounty MCP Server
-
-> **Asisten Bug Bounty Hunting Elite berbasis Model Context Protocol (MCP) untuk Antigravity (AGY)**
+# StealthVision-MCP
+> **Stealth Bug Bounty Hunting Assistant berbasis Model Context Protocol (MCP)**
 > Mengintegrasikan analisis otomatis terhadap kerentanan **OWASP Top 10 2025** langsung ke asisten AI Anda.
 
 ---
 
 ## 🎯 Gambaran Umum
 
-**AGY Bug Bounty MCP Server** adalah platform asisten keamanan yang dirancang khusus untuk mempermudah alur kerja bug bounty hunting dan penetration testing. Dengan protokol MCP, asisten AI Anda (AGY/Claude) dapat mengeksekusi **86 modul uji keamanan** secara dinamis, menyimpan hasilnya ke database SQLite lokal, dan mengekspor laporan profesional dalam format HTML, Markdown, atau CSV.
+**StealthVision-MCP** adalah platform asisten keamanan yang dirancang khusus untuk mempermudah alur kerja bug bounty hunting dan penetration testing. Dengan protokol MCP, asisten AI Anda dapat mengeksekusi **32 modul uji keamanan** secara dinamis, menyimpan hasilnya ke database SQLite lokal, dan mengekspor laporan profesional dalam format HTML, Markdown, atau CSV.
 
 MCP ini mencakup kerentanan web apps dan API berdasarkan klasifikasi **OWASP Top 10 2025**:
 1. **A01:2025 — Broken Access Control** (IDOR, Path Traversal, CORS, Privilege Escalation)
