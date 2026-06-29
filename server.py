@@ -67,6 +67,10 @@ _TOOL_MODULES = [
     "tools.portswigger_notes_kb",
     "tools.rfc_kb",
     "tools.rag_engine",
+    "tools.api_testing",
+    "tools.cloud_testing",
+    "tools.git_testing",
+    "tools.container_testing",
 ]
 
 _loaded = []
