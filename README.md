@@ -167,6 +167,26 @@ python server.py
 
 ---
 
+### 4. Mode Selector Usage
+
+```
+# Switch to pentester mode
+→ mode("pentest")
+# Now tools focus on internal pentest methodology
+
+# Switch to CTF mode  
+→ mode("ctf")
+# Tools emphasize puzzle-solving approach
+
+# Check current mode
+→ get_current_mode()
+
+# List all modes
+→ list_modes()
+```
+
+---
+
 ## ⚙️ Integrasi Claude Desktop
 
 Tambahkan server MCP ke konfigurasi Claude Desktop:
