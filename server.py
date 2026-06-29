@@ -77,6 +77,7 @@ _TOOL_MODULES = [
     "tools.impact_scoring",
     "tools.subdomain_brute",
     "tools.graphql_mutation",
+    "tools.port_scanner",
 ]
 
 _loaded = []
