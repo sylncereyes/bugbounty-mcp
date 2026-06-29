@@ -85,6 +85,49 @@ python server.py
 
 ---
 
+## 📖 Contoh Penggunaan (Usage)
+
+### 1. Workflow Bug Bounty Hunting Dasar
+
+```
+# Tambah target baru
+→ add_target(
+    program_name="HackerOne - TargetCorp",
+    domain="targetcorp.com",
+    scope=["*.targetcorp.com", "api.targetcorp.com"]
+)
+
+# Recon dasar
+→ recon_domain(domain="targetcorp.com")
+→ dns_lookup(domain="targetcorp.com", record_type="MX")
+
+# Security checks
+→ security_headers_check(url="https://targetcorp.com")
+→ tls_ssl_check(hostname="targetcorp.com")
+
+# Vulnerability testing
+→ sqli_test(url="https://targetcorp.com/search", params={"q": "test"})
+→ xss_test(url="https://targetcorp.com/profile", params={"user": "<script>"})
+
+# Generate report
+→ generate_report(target_id=1, format="html")
+```
+
+### 2. Intelligence Layer Usage
+
+```
+# CVE filtering
+→ vulnx_exploitable(cve_ids=["CVE-2023-38545", "CVE-2024-3094"])
+
+# ExploitDB search
+→ search_exploits(software="apache", version="2.4.49")
+
+# ATT&CK search
+→ search_attck(tactic="TA0006", technique="T1556")
+```
+
+---
+
 ## ⚠️ Legal & Ethical Disclaimer
 
 **🚨 PERINGATAN KERAS: Tool ini melakukan REAL network requests.**
