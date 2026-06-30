@@ -94,6 +94,8 @@ _TOOL_MODULES = [
     "tools.credential_dumper",
     "tools.smb_pwn",
     "tools.rate_limit_bypass",
+    "tools.browser_analysis",
+    "tools.external_tools",
 ]
 
 _loaded = []
@@ -134,7 +136,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    print(f"[StealthVision] Loaded {len(_loaded)}/59 tool modules", file=sys.stderr)
+    print(f"[StealthVision] Loaded {len(_loaded)}/62 tool modules", file=sys.stderr)
     if _failed:
         for mod, err in _failed:
             print(f"[StealthVision] FAILED: {mod} - {err}", file=sys.stderr)
