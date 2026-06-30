@@ -92,6 +92,7 @@ _TOOL_MODULES = [
     "tools.kerberos_attacks",
     "tools.nmap_scanner",
     "tools.credential_dumper",
+    "tools.smb_pwn",
 ]
 
 _loaded = []

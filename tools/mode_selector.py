@@ -46,6 +46,7 @@ MODE_TOOLSETS = {
         "ad_enumeration", "internal_pivot", "lateral_movement_check", "priv_esc_chains",
         "kerberos_attack", "bloodhound_collector",
         "credential_dumper", "trust_mapper",
+        "smb_pwn", "socks_proxy_generator",
     ],
     "ctf": [
         # Focused tools for CTF challenges
