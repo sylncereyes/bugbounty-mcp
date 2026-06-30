@@ -88,6 +88,8 @@ _TOOL_MODULES = [
     "tools.stego_helper",
     "tools.forensics_extract",
     "tools.binary_analyzer",
+    "tools.hunter_workflow",
+    "tools.kerberos_attacks",
 ]
 
 _loaded = []

@@ -28,6 +28,7 @@ MODE_TOOLSETS = {
         # Knowledge Base
         "search_attck", "search_cve", "search_exploits", "search_hacktricks",
         "rag_search", "rag_context_inject", "rag_get_exploits",
+        "hunter_workflow", "scope_filter", "bounty_calculator",
     ],
     "pentest": [
         # All hunter tools + additional
@@ -42,6 +43,7 @@ MODE_TOOLSETS = {
         # Internal pentest focused
         "internal_network_scan", "ldap_enum", "smb_scan",
         "ad_enumeration", "internal_pivot", "lateral_movement_check", "priv_esc_chains",
+        "kerberos_attack", "bloodhound_collector",
     ],
     "ctf": [
         # Focused tools for CTF challenges
