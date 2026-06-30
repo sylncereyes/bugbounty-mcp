@@ -193,6 +193,20 @@ python server.py
 → list_modes()
 ```
 
+### 5. Advanced Testing Usage
+
+```
+# CSTI testing
+→ csti_fuzz(url="https://target.com/search", param="q", payload_type="angular")
+
+# WAF detection
+→ waf_detect(url="https://target.com")
+→ waf_bypass_payload(vuln_type="sql_injection")
+
+# GraphQL introspection
+→ graphql_introspect(endpoint="https://target.com/graphql")
+```
+
 ---
 
 ## ⚙️ Integrasi Claude Desktop

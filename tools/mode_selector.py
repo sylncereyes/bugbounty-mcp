@@ -15,7 +15,7 @@ _CURRENT_MODE = "hunter"  # Default mode
 MODE_TOOLSETS = {
     "hunter": [
         # Recon
-        "recon", "dns_lookup", "whois_lookup",
+        "recon", "dns_lookup", "whois_lookup", "port_scanner",
         # Vulnerability Testing
         "a01_access_control", "a02_misconfiguration", "a03_supply_chain",
         "a04_cryptography", "a05_injection", "a06_insecure_design",
