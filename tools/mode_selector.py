@@ -41,6 +41,7 @@ MODE_TOOLSETS = {
         "search_attck", "search_cve", "search_exploits", "search_hacktricks",
         # Internal pentest focused
         "internal_network_scan", "ldap_enum", "smb_scan",
+        "ad_enumeration", "internal_pivot", "lateral_movement_check", "priv_esc_chains",
     ],
     "ctf": [
         # Focused tools for CTF challenges

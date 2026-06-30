@@ -81,6 +81,9 @@ _TOOL_MODULES = [
     "tools.csti_chains",
     "tools.waf_bypass",
     "tools.graphql_introspect",
+    "tools.ad_enumeration",
+    "tools.internal_pivot",
+    "tools.priv_esc",
 ]
 
 _loaded = []
