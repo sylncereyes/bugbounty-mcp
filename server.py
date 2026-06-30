@@ -90,6 +90,8 @@ _TOOL_MODULES = [
     "tools.binary_analyzer",
     "tools.hunter_workflow",
     "tools.kerberos_attacks",
+    "tools.nmap_scanner",
+    "tools.credential_dumper",
 ]
 
 _loaded = []
