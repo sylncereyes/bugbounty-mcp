@@ -7,7 +7,7 @@
 
 ## 🎯 Gambaran Umum
 
-**StealthVision-MCP** adalah platform asisten keamanan yang dirancang khusus untuk mempermudah alur kerja bug bounty hunting dan penetration testing. Dengan protokol MCP, asisten AI Anda dapat mengeksekusi **54 modul uji keamanan** secara dinamis, menyimpan hasilnya ke database SQLite lokal, dan mengekspor laporan profesional dalam format HTML, Markdown, atau CSV.
+**StealthVision-MCP** adalah platform asisten keamanan yang dirancang khusus untuk mempermudah alur kerja bug bounty hunting dan penetration testing. Dengan protokol MCP, asisten AI Anda dapat mengeksekusi **56 modul uji keamanan** secara dinamis, menyimpan hasilnya ke database SQLite lokal, dan mengekspor laporan profesional dalam format HTML, Markdown, atau CSV.
 
 **RAG Engine terintegrasi** - modul `tools/rag_engine.py` otomatis mencari knowledge base saat AI mendeteksi intent vulnerability/methodology.
 
@@ -61,12 +61,12 @@ git clone --depth 1 https://github.com/projectdiscovery/nuclei-templates knowled
 
 # 6. Jalankan server
 python server.py
-# Output sukses: [StealthVision] Loaded 50/50 tool modules
+# Output sukses: [StealthVision] Loaded 56/56 tool modules
 ```
 
 ---
 
-## 🧰 Modules Inventory (54 Modules)
+## 🧰 Modules Inventory (56 Modules)
 
 ### OWASP Top 10 Modules
 - `a01_access_control`, `a02_misconfiguration`, `a03_supply_chain`
@@ -102,6 +102,13 @@ python server.py
 - `ad_enumeration` - Active Directory enumeration & user discovery
 - `internal_pivot` - Internal network pivoting via compromised host
 - `priv_esc_chains` - Windows/Linux privilege escalation commands
+- `kerberos_attack` - AS-REP roasting, kerberoasting, ticket attacks
+- `bloodhound_collector` - BloodHound AD attack path collection
+
+### Hunter Automation Modules (NEW)
+- `hunter_workflow` - Automated bug bounty hunting workflow orchestration
+- `scope_filter` - In-scope asset validation
+- `bounty_calculator` - Bounty reward prediction based on impact
 
 ### Knowledge Base Modules
 - `attck_capec_kb` - MITRE ATT&CK + CAPEC (1,190 entries)
