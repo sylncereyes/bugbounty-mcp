@@ -46,9 +46,9 @@ MODE_TOOLSETS = {
     "ctf": [
         # Focused tools for CTF challenges
         "recon", "dns_lookup",
-        "a05_injection", "a01_access_control",  # Web challenges
-        "search_hacktricks", "search_attck",  # Methodology
-        "crypto_solver", "stego_helper", "forensics_extract",  # CTF-specific
+        "a05_injection", "a01_access_control",
+        "search_hacktricks", "search_attck",
+        "crypto_solver", "stego_helper", "forensics_extract",
         "reverse_helper", "binary_analyzer",
     ]
 }

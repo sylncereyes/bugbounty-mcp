@@ -84,6 +84,10 @@ _TOOL_MODULES = [
     "tools.ad_enumeration",
     "tools.internal_pivot",
     "tools.priv_esc",
+    "tools.crypto_solver",
+    "tools.stego_helper",
+    "tools.forensics_extract",
+    "tools.binary_analyzer",
 ]
 
 _loaded = []
