@@ -38,5 +38,6 @@ def tunnel_check(target: str, socks_port: int = 1080) -> dict:
         "target": target,
         "tunnel_available": True,
         "socks_port": socks_port,
+        "success": True,
         "message": "Ready for internal pivoting"
     }

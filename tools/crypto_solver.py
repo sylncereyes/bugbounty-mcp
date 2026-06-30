@@ -10,7 +10,7 @@ def crypto_solver(encoded: str, method: str = "auto") -> dict:
     decodings = []
     
     # Common encoding methods
-    if method in ["auto", "base64"]:
+    if method in ["auto", "base64", "b64"]:
         try:
             decoded = base64.b64decode(encoded).decode('utf-8', errors='ignore')
             decodings.append({"method": "base64", "result": decoded})
@@ -31,7 +31,7 @@ def crypto_solver(encoded: str, method: str = "auto") -> dict:
         except:
             pass
     
-    if method in ["auto", "base32"]:
+    if method in ["auto", "base32", "b32"]:
         try:
             decoded = base64.b32decode(encoded).decode('utf-8', errors='ignore')
             decodings.append({"method": "base32", "result": decoded})
