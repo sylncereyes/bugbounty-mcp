@@ -132,7 +132,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    print(f"[StealthVision] Loaded {len(_loaded)}/56 tool modules", file=sys.stderr)
+    print(f"[StealthVision] Loaded {len(_loaded)}/58 tool modules", file=sys.stderr)
     if _failed:
         for mod, err in _failed:
             print(f"[StealthVision] FAILED: {mod} - {err}", file=sys.stderr)
