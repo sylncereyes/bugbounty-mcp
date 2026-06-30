@@ -7,7 +7,7 @@
 
 ## 🎯 Gambaran Umum
 
-**StealthVision-MCP** adalah platform asisten keamanan yang dirancang khusus untuk mempermudah alur kerja bug bounty hunting dan penetration testing. Dengan protokol MCP, asisten AI Anda dapat mengeksekusi **44 modul uji keamanan** secara dinamis, menyimpan hasilnya ke database SQLite lokal, dan mengekspor laporan profesional dalam format HTML, Markdown, atau CSV.
+**StealthVision-MCP** adalah platform asisten keamanan yang dirancang khusus untuk mempermudah alur kerja bug bounty hunting dan penetration testing. Dengan protokol MCP, asisten AI Anda dapat mengeksekusi **47 modul uji keamanan** secara dinamis, menyimpan hasilnya ke database SQLite lokal, dan mengekspor laporan profesional dalam format HTML, Markdown, atau CSV.
 
 **RAG Engine terintegrasi** - modul `tools/rag_engine.py` otomatis mencari knowledge base saat AI mendeteksi intent vulnerability/methodology.
 
@@ -61,12 +61,12 @@ git clone --depth 1 https://github.com/projectdiscovery/nuclei-templates knowled
 
 # 6. Jalankan server
 python server.py
-# Output sukses: [StealthVision] Loaded 44/44 tool modules
+# Output sukses: [StealthVision] Loaded 47/47 tool modules
 ```
 
 ---
 
-## 🧰 Modules Inventory (44 Modules)
+## 🧰 Modules Inventory (47 Modules)
 
 ### OWASP Top 10 Modules
 - `a01_access_control`, `a02_misconfiguration`, `a03_supply_chain`
@@ -94,6 +94,9 @@ python server.py
 - `subdomain_brute` - Brute-force subdomains (SecLists integration)
 - `graphql_mutation` - GraphQL privilege escalation testing
 - `impact_scoring` - Panic factor impact assessment
+- `csti_chains` - Client-side template injection testing
+- `waf_bypass` - WAF detection & bypass payloads
+- `graphql_introspect` - Full GraphQL schema introspection
 
 ### Knowledge Base Modules
 - `attck_capec_kb` - MITRE ATT&CK + CAPEC (1,190 entries)
