@@ -29,7 +29,7 @@ MODE_TOOLSETS = {
         "search_attck", "search_cve", "search_exploits", "search_hacktricks",
         "rag_search", "rag_context_inject", "rag_get_exploits",
         "hunter_workflow", "scope_filter", "bounty_calculator",
-        "nmap_scan", "nmap_service_scan",
+        "nmap_scan", "nmap_service_scan", "rate_limit_bypass",
     ],
     "pentest": [
         # All hunter tools + additional
