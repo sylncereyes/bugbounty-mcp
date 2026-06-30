@@ -78,6 +78,9 @@ _TOOL_MODULES = [
     "tools.subdomain_brute",
     "tools.graphql_mutation",
     "tools.port_scanner",
+    "tools.csti_chains",
+    "tools.waf_bypass",
+    "tools.graphql_introspect",
 ]
 
 _loaded = []
