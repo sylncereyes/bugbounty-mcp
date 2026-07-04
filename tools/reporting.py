@@ -2,6 +2,7 @@ import os
 import csv
 from mcp_instance import mcp
 from tools.db import get_findings, get_target, get_finding_stats
+from tools.http_utils import sanitize_output
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from datetime import datetime
 from pathlib import Path
@@ -37,6 +38,10 @@ def generate_report(target_id: int, report_format: str = "html", output_path: st
     findings = get_findings(target_id)
     stats = get_finding_stats(target_id)
 
+    # Sanitize findings and stats before including in report (redact sensitive data)
+    sanitized_findings = sanitize_output(findings)
+    sanitized_stats = sanitize_output(stats)
+    
     ext = "html" if report_format.lower() == "html" else "md"
     output_path = _safe_output_path(output_path, f"target_{target_id}_report.{ext}")
 
@@ -54,9 +59,9 @@ def generate_report(target_id: int, report_format: str = "html", output_path: st
             fallback = "<html><head><title>Vulnerability Report</title></head><body>"
             fallback += f"<h1>Report for {escape(target.get('program_name', 'Unknown'))}</h1>"
             fallback += f"<p>Domain: {escape(target.get('domain', 'Unknown'))}</p>"
-            fallback += f"<h2>Stats: {escape(str(stats))}</h2>"
+            fallback += f"<h2>Stats: {escape(str(sanitized_stats))}</h2>"
             fallback += "<h2>Findings</h2><ul>"
-            for f_item in findings:
+            for f_item in sanitized_findings:
                 fallback += f"<li><strong>{escape(f_item.get('title', ''))}</strong> - {escape(f_item.get('severity', ''))} - {escape(f_item.get('owasp_category', ''))}</li>"
             fallback += "</ul></body></html>"
             with open(output_path, "w") as f:
@@ -82,8 +87,8 @@ def generate_report(target_id: int, report_format: str = "html", output_path: st
 
         rendered = t.render(
             target=target,
-            findings=findings,
-            stats=stats,
+            findings=sanitized_findings,
+            stats=sanitized_stats,
             report_date=datetime.now().strftime("%Y-%m-%d %H:%M"),
             owasp_stats=owasp_stats
         )
@@ -101,16 +106,16 @@ def generate_report(target_id: int, report_format: str = "html", output_path: st
 * **Bounty Range**: {target.get('bounty_range')}
 
 ## 📊 Findings Summary
-* **Critical**: {stats.get('Critical', 0)}
-* **High**: {stats.get('High', 0)}
-* **Medium**: {stats.get('Medium', 0)}
-* **Low**: {stats.get('Low', 0)}
-* **Informational**: {stats.get('Informational', 0)}
-* **Total**: {stats.get('total', 0)}
+* **Critical**: {sanitized_stats.get('Critical', 0)}
+* **High**: {sanitized_stats.get('High', 0)}
+* **Medium**: {sanitized_stats.get('Medium', 0)}
+* **Low**: {sanitized_stats.get('Low', 0)}
+* **Informational**: {sanitized_stats.get('Informational', 0)}
+* **Total**: {sanitized_stats.get('total', 0)}
 
 ## 🐛 Detailed Findings
 """
-        for idx, f_item in enumerate(findings):
+        for idx, f_item in enumerate(sanitized_findings):
             markdown += f"""
 ### {idx+1}. {f_item.get('title')}
 * **Severity**: {f_item.get('severity')}
@@ -158,16 +163,19 @@ def generate_executive_summary(target_id: int) -> str:
 def export_findings_csv(target_id: int, output_path: str = None) -> dict:
     """Exports target findings to CSV format."""
     findings = get_findings(target_id)
-
+    
     if not findings:
         return {"error": "No findings to export."}
-
+    
+    # Sanitize findings before exporting to CSV
+    sanitized_findings = sanitize_output(findings)
+    
     output_path = _safe_output_path(output_path, f"target_{target_id}_findings.csv")
-
-    keys = findings[0].keys()
+    
+    keys = sanitized_findings[0].keys()
     with open(output_path, "w", newline="") as f:
         dict_writer = csv.DictWriter(f, keys)
         dict_writer.writeheader()
-        dict_writer.writerows(findings)
-
-    return {"status": "success", "output_path": output_path, "count": len(findings)}
+        dict_writer.writerows(sanitized_findings)
+    
+    return {"status": "success", "output_path": output_path, "count": len(sanitized_findings)}

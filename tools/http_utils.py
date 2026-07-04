@@ -258,6 +258,86 @@ async def request_with_backoff(
     raise last_error
 
 
+import re
+import json
+from typing import Any, Dict, List, Union
+
+# Sensitive patterns to redact
+SENSITIVE_PATTERNS = [
+    # Bearer tokens
+    (re.compile(r'(Bearer\s+)([A-Za-z0-9\-._~+/]+=*)', re.IGNORECASE), r'\1[REDACTED]'),
+    # API keys in URLs/query params: api_key=..., key=..., token=..., secret=..., password=...
+    (re.compile(r'(?i)([?&](?:api[_-]?key|key|token|secret|password|access[_-]?token|auth[_-]?token)=)([^&\s]+)'), r'\1[REDACTED]'),
+    # API keys in headers: X-Api-Key, X-Auth-Token, Authorization, etc.
+    (re.compile(r'(?i)(["\']?(?:x[_-]?api[_-]?key|x[_-]?auth[_-]?token|authorization|api[_-]?key)["\']?\s*[:=]\s*["\']?)([A-Za-z0-9\-._~+/]+=*)', re.IGNORECASE), r'\1[REDACTED]'),
+    # AWS keys (AKIA...)
+    (re.compile(r'(AKIA[0-9A-Z]{16})'), r'[REDACTED_AWS_KEY]'),
+    # Generic long tokens (32+ chars alphanumeric)
+    (re.compile(r'(?i)(["\']?token["\']?\s*[:=]\s*["\'])([A-Za-z0-9\-._~+/]{32,})', re.IGNORECASE), r'\1[REDACTED]'),
+    # JWT tokens (three base64 parts separated by dots)
+    (re.compile(r'(eyJ[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+)'), r'[REDACTED_JWT]'),
+]
+
+
+def sanitize_output(data: Any) -> Any:
+    """
+    Recursively sanitize sensitive data from any structure (dict, list, str, etc.).
+    
+    This should be called before writing any output to files, logs, or reports.
+    
+    Args:
+        data: Any: The data to sanitize (dict, list, str, int, etc.)
+        
+    Returns:
+        Sanitized copy of the data with sensitive patterns redacted.
+    """
+    if isinstance(data, str):
+        result = data
+        for pattern, replacement in SENSITIVE_PATTERNS:
+            result = pattern.sub(replacement, result)
+        return result
+    
+    elif isinstance(data, dict):
+        return {key: sanitize_output(value) for key, value in data.items()}
+    
+    elif isinstance(data, (list, tuple)):
+        return [sanitize_output(item) for item in data]
+    
+    else:
+        # int, float, bool, None - return as-is
+        return data
+
+
+def sanitize_response(response: httpx.Response) -> httpx.Response:
+    """
+    Create a sanitized copy of an httpx.Response for logging/reporting.
+    Strips sensitive headers and redacts sensitive data in body.
+    """
+    # Headers to redact
+    sensitive_headers = {
+        'authorization', 'x-api-key', 'x-auth-token', 'api-key',
+        'cookie', 'set-cookie', 'x-csrf-token', 'x-xsrf-token'
+    }
+    
+    sanitized_headers = {}
+    for k, v in response.headers.items():
+        if k.lower() in sensitive_headers:
+            sanitized_headers[k] = '[REDACTED]'
+        else:
+            sanitized_headers[k] = v
+    
+    # Sanitize body
+    sanitized_text = sanitize_output(response.text)
+    
+    return httpx.Response(
+        status_code=response.status_code,
+        headers=sanitized_headers,
+        text=sanitized_text,
+        request=response.request,
+        extensions=response.extensions
+    )
+
+
 def tls_connect(hostname: str, port: int = 443, timeout: float = None):
     """Create a TLS/SSL connection and return (version, cipher, cert) tuple.
 
