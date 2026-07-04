@@ -6,6 +6,7 @@ import httpx
 import asyncio
 import logging
 import functools
+from urllib.parse import urlparse
 from config import DEFAULT_TIMEOUT, USER_AGENT, VERIFY_SSL, REQUEST_DELAY, DRY_RUN
 from tools.db import is_in_scope
 
@@ -21,6 +22,20 @@ WAF_BLOCK_INDICATORS = [
     " ModSecurity", "OWASP", "ddos protection", "security service",
     "suspicious activity", "automated request", "bot detection"
 ]
+
+
+def extract_domain(url: str) -> str:
+    """Extract domain from URL for rate limiting key."""
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname or ""
+        # Remove port if present
+        if ":" in hostname:
+            hostname = hostname.split(":")[0]
+        return hostname.lower()
+    except Exception:
+        # Fallback: return lowercase url
+        return url.lower()
 
 
 def validate_scope(url: str, target_id: int = None) -> None:

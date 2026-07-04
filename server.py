@@ -129,6 +129,10 @@ _TOOL_MODULES = [
 _loaded = []
 _failed = []
 
+# ─── Optional: Disable Universal System Prompt injection ─────────────────────
+import os
+_DISABLE_SYSTEM_PROMPT = os.getenv("DISABLE_SYSTEM_PROMPT", "false").lower() in ("true", "1", "yes")
+
 for module_name in _TOOL_MODULES:
     try:
         importlib.import_module(module_name)
@@ -171,12 +175,15 @@ if __name__ == "__main__":
             print(f"[StealthVision] FAILED: {mod} - {err}", file=sys.stderr)
 
     # ── Confirm Universal System Prompt injection ──────────────────────────────
-    print(
-        f"[StealthVision] Universal Bug Bounty System Prompt ACTIVE "
-        f"({len(_SYSTEM_PROMPT):,} chars) -- "
-        "all connected MCP clients will adopt the **StealthVision** persona.",
-        file=sys.stderr,
-    )
+    if not _DISABLE_SYSTEM_PROMPT:
+        print(
+            f"[StealthVision] Universal Bug Bounty System Prompt ACTIVE "
+            f"({len(_SYSTEM_PROMPT):,} chars) -- "
+            "all connected MCP clients will adopt the **StealthVision** persona.",
+            file=sys.stderr,
+        )
+    else:
+        print("[StealthVision] System Prompt injection DISABLED (--env DISABLE_SYSTEM_PROMPT=true)", file=sys.stderr)
 
     if not VERIFY_SSL:
         print("[StealthVision] WARNING: SSL verification is disabled (VERIFY_SSL=false)", file=sys.stderr)
