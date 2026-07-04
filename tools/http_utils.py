@@ -8,6 +8,7 @@ import logging
 import functools
 from urllib.parse import urlparse
 from config import DEFAULT_TIMEOUT, USER_AGENT, VERIFY_SSL, REQUEST_DELAY, DRY_RUN
+from typing import Optional
 from tools.db import is_in_scope
 
 logger = logging.getLogger("agy")
@@ -38,7 +39,7 @@ def extract_domain(url: str) -> str:
         return url.lower()
 
 
-def validate_scope(url: str, target_id: int = None) -> None:
+def validate_scope(url: str, target_id: Optional[int] = None) -> None:
     """Validate URL scope before making requests.
     
     Args:

@@ -12,6 +12,7 @@ import shutil
 import subprocess
 from typing import Optional, List, Dict, Any
 from mcp_instance import mcp
+from tools.http_utils import validate_scope
 
 logger = logging.getLogger("stealthvision")
 
@@ -155,7 +156,7 @@ def detect_available_browsers() -> dict:
 # ═════════════════════════════════════════════════════════════════════════════════
 
 @mcp.tool()
-async def verify_target_is_web(url: str, timeout: int = 15, browser: Optional[str] = None) -> dict:
+async def verify_target_is_web(url: str, timeout: int = 15, browser: Optional[str] = None, target_id: Optional[int] = None) -> dict:
     """
     Verify if a target is a web application before running HTTP tests.
     
@@ -165,7 +166,16 @@ async def verify_target_is_web(url: str, timeout: int = 15, browser: Optional[st
     - Returns page title, status code, and basic metadata
     
     Uses detected/default browser for accurate testing.
+    
+    Args:
+        url: Target URL to verify
+        timeout: Page load timeout in seconds
+        browser: Browser choice (chrome, firefox, brave, chromium) or None for auto-detect
+        target_id: Target ID for scope validation (raises ValueError if out of scope)
     """
+    # Scope validation - FAIL if out of scope
+    validate_scope(url, target_id)
+    
     if not _sync_ensure_browser():
         return {"error": "Playwright not installed. Run: pip install playwright && playwright install chromium"}
     
@@ -409,7 +419,7 @@ async def intercept_and_test_endpoint(url: str, endpoint_pattern: Optional[str] 
 
 @mcp.tool()
 async def check_xss_in_browser(url: str, param: str, payloads: Optional[List[str]] = None,
-                               browser: Optional[str] = None) -> dict:
+                               browser: Optional[str] = None, target_id: Optional[int] = None) -> dict:
     """
     Verify XSS vulnerability using real browser execution.
     
@@ -419,7 +429,17 @@ async def check_xss_in_browser(url: str, param: str, payloads: Optional[List[str
     - Observing actual JavaScript behavior
     
     Uses detected/default browser for engine-specific testing.
+    
+    Args:
+        url: Target URL to test (must include scheme)
+        param: Parameter name to test for XSS
+        payloads: Custom payloads or None for defaults
+        browser: Browser choice or None for auto-detect
+        target_id: Target ID for scope validation (raises ValueError if out of scope)
     """
+    # Scope validation - FAIL if out of scope
+    validate_scope(url, target_id)
+    
     if not _sync_ensure_browser():
         return {"error": "Playwright not installed"}
     
