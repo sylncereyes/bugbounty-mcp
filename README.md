@@ -1,7 +1,7 @@
 # StealthVision-MCP
 
 > **Stealth Bug Bounty Hunting Assistant berbasis Model Context Protocol (MCP)**  
-> Mengintegrasikan analisis otomatis terhadap kerentanan **OWASP Top 10 2025** langsung ke asisten AI Anda.
+> Mengintegrasikan analisis otomatis terhadap kerentanan **OWASP Top 10 2021** langsung ke asisten AI Anda.
 
 ---
 

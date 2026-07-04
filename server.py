@@ -1,6 +1,6 @@
 """
 StealthVision-MCP Server - Main Entry Point
-OWASP Top 10 2025 Vulnerability Assessment Platform
+OWASP Top 10 2021 Vulnerability Assessment Platform
 
 Usage:
     python server.py                    # stdio transport (for Claude Desktop)
@@ -12,11 +12,7 @@ Claude Desktop config (claude_desktop_config.json):
         "mcpServers": {
             "stealthvision": {
                 "command": "python",
-                "args": ["/path/to/bugbounty-mcp/server.py"],
-                "env": {
-                    "SHODAN_API_KEY": "...",
-                    "GITHUB_TOKEN": "..."
-                }
+                "args": ["/path/to/bugbounty-mcp/server.py"]
             }
         }
     }
@@ -148,7 +144,7 @@ if __name__ == "__main__":
     import logging
 
     parser = argparse.ArgumentParser(
-        description="StealthVision-MCP Server - OWASP Top 10 2025"
+        description="StealthVision-MCP Server - OWASP Top 10 2021"
     )
     parser.add_argument(
         "--transport",
