@@ -3,10 +3,13 @@
 StealthVision-MCP - Browser Automation Tools
 Uses Playwright/Chromium for target verification and false-positive prevention.
 Captures request-response for HTTP-based vulnerability validation.
+Supports dynamic browser detection (Chrome, Firefox, Brave, Chromium).
 """
 import asyncio
 import logging
 import os
+import shutil
+import subprocess
 from typing import Optional, List, Dict, Any
 from mcp_instance import mcp
 
@@ -15,7 +18,93 @@ logger = logging.getLogger("stealthvision")
 # Set Playwright browsers path
 os.environ.setdefault('PLAYWRIGHT_BROWSERS_PATH', os.path.expanduser('~/.cache/ms-playwright'))
 
-# ─── Browser Availability Check ───────────────────────────────────────────────
+# ─── Browser Detection Helpers ───────────────────────────────────────────────────
+
+def get_system_browser_map() -> Dict[str, str]:
+    """
+    Detects installed browsers and returns a map of {browser_type: executable_path}.
+    """
+    browsers = {
+        'chrome': ['google-chrome', 'google-chrome-stable', 'chrome'],
+        'firefox': ['firefox', 'firefox-esr'],
+        'brave': ['brave-browser', 'brave'],
+        'chromium': ['chromium', 'chromium-browser'],
+    }
+    
+    installed = {}
+    for b_type, binaries in browsers.items():
+        for binary in binaries:
+            path = shutil.which(binary)
+            if path:
+                installed[b_type] = path
+                break
+    return installed
+
+def detect_default_browser() -> Optional[str]:
+    """
+    Detects the default browser using xdg-settings (Linux/Kali).
+    Returns the browser type (chrome, firefox, etc.) or None.
+    """
+    try:
+        result = subprocess.run(['xdg-settings', 'get', 'default-web-browser'], 
+                                capture_output=True, text=True, check=True)
+        default = result.stdout.strip().lower()
+        if 'chrome' in default: return 'chrome'
+        if 'chromium' in default: return 'chromium'
+        if 'firefox' in default: return 'firefox'
+        if 'brave' in default: return 'brave'
+    except Exception:
+        pass
+    return None
+
+async def launch_dynamic_browser(p, browser_choice: Optional[str] = None, headless: bool = True):
+    """
+    Launches the best available browser based on choice, default, or installed list.
+    Returns (browser_context, browser_name) tuple.
+    """
+    browser_map = get_system_browser_map()
+    
+    chosen_browser = None
+    chosen_path = None
+    
+    # 1. Manual choice
+    if browser_choice and browser_choice.lower() in browser_map:
+        chosen_browser = browser_choice.lower()
+        chosen_path = browser_map[chosen_browser]
+    
+    # 2. Default browser
+    if not chosen_browser:
+        default = detect_default_browser()
+        if default and default in browser_map:
+            chosen_browser = default
+            chosen_path = browser_map[chosen_browser]
+    
+    # 3. Fallback: first installed browser
+    if not chosen_browser and browser_map:
+        chosen_browser = list(browser_map.keys())[0]
+        chosen_path = browser_map[chosen_browser]
+    
+    # Launch based on type
+    if chosen_browser == 'firefox':
+        if chosen_path:
+            browser = await p.firefox.launch(headless=headless, executable_path=chosen_path)
+        else:
+            browser = await p.firefox.launch(headless=headless)
+    else:
+        # Chrome/Chromium/Brave use chromium engine
+        if chosen_path:
+            browser = await p.chromium.launch(headless=headless, executable_path=chosen_path)
+        else:
+            # Fallback to playwright bundled
+            browser = await p.chromium.launch(headless=headless)
+    
+    return browser, chosen_browser or 'chromium'
+
+def get_available_browsers() -> List[str]:
+    """Return list of available browser types."""
+    return list(get_system_browser_map().keys())
+
+# ─── Browser Availability Check ────────────────────────────────────────────────
 
 async def _ensure_browser() -> bool:
     """Check if Playwright browser is available."""
@@ -33,12 +122,40 @@ def _sync_ensure_browser() -> bool:
     except ImportError:
         return False
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# TOOL 1 - verify_target_is_web
-# ═══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════
+# TOOL 0 - detect_browsers (NEW)
+# ═════════════════════════════════════════════════════════════════════════════════
 
 @mcp.tool()
-async def verify_target_is_web(url: str, timeout: int = 15, use_system_chromium: bool = True) -> dict:
+def detect_available_browsers() -> dict:
+    """
+    Detect installed browsers and default browser on the system.
+    
+    Returns:
+        dict with 'installed', 'default', and 'selected_for_testing' lists
+    """
+    installed = get_system_browser_map()
+    default = detect_default_browser()
+    
+    # Select best browser for testing
+    selected = None
+    if default and default in installed:
+        selected = default
+    elif installed:
+        selected = list(installed.keys())[0]
+    
+    return {
+        "installed_browsers": installed,
+        "default_browser": default,
+        "browser_selected_for_testing": selected,
+    }
+
+# ══════════════════════════════════════════════════════════════════════════════════
+# TOOL 1 - verify_target_is_web
+# ═════════════════════════════════════════════════════════════════════════════════
+
+@mcp.tool()
+async def verify_target_is_web(url: str, timeout: int = 15, browser: Optional[str] = None) -> dict:
     """
     Verify if a target is a web application before running HTTP tests.
     
@@ -47,35 +164,22 @@ async def verify_target_is_web(url: str, timeout: int = 15, use_system_chromium:
     - Content-Type: text/html (web page)
     - Returns page title, status code, and basic metadata
     
-    This prevents false positives when target is not a web app.
+    Uses detected/default browser for accurate testing.
     """
     if not _sync_ensure_browser():
         return {"error": "Playwright not installed. Run: pip install playwright && playwright install chromium"}
     
     from playwright.async_api import async_playwright
     
-    # Ensure URL has scheme
     if not url.startswith(('http://', 'https://')):
         url = f"https://{url}"
     
     try:
         async with async_playwright() as p:
-            # Use chromium with explicit executable path for system-installed
-            if use_system_chromium:
-                chrome_path = os.path.expanduser('~/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome')
-                if os.path.exists(chrome_path):
-                    browser = await p.chromium.launch(
-                        headless=True,
-                        executable_path=chrome_path
-                    )
-                else:
-                    browser = await p.chromium.launch(headless=True)
-            else:
-                browser = await p.chromium.launch(headless=True)
-                
-            context = await browser.new_context(
+            browser_inst, browser_name = await launch_dynamic_browser(p, browser_choice=browser)
+            context = await browser_inst.new_context(
                 viewport={'width': 1280, 'height': 800},
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             )
             page = await context.new_page()
             
@@ -108,7 +212,7 @@ async def verify_target_is_web(url: str, timeout: int = 15, use_system_chromium:
             all_forms = await page.eval_on_selector_all('form', 'els => els.map(e => ({ action: e.action, method: e.method }))')
             forms = all_forms[:10]
             
-            await browser.close()
+            await browser_inst.close()
             
             return {
                 "status": "success",
@@ -122,20 +226,22 @@ async def verify_target_is_web(url: str, timeout: int = 15, use_system_chromium:
                 "forms_found": len(forms),
                 "sample_links": links[:5],
                 "sample_forms": forms[:3],
+                "browser_used": browser_name,
             }
             
     except Exception as e:
         return {"status": "error", "url": url, "error": str(e)}
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════
 # TOOL 2 - browse_with_capture
-# ═══════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════════════
 
 @mcp.tool()
 async def browse_with_capture(url: str, wait_for_selector: Optional[str] = None,
-                               wait_timeout: int = 10, headless: bool = True) -> dict:
+                             wait_timeout: int = 10, headless: bool = True, 
+                             browser: Optional[str] = None) -> dict:
     """
-    Surf target with Chromium and capture full request-response data.
+    Surf target with browser and capture full request-response data.
     
     Useful for:
     - Analyzing JS-heavy SPAs
@@ -143,7 +249,7 @@ async def browse_with_capture(url: str, wait_for_selector: Optional[str] = None,
     - Verifying dynamic behavior that scanners might miss
     - Reducing false positives by observing actual browser behavior
     
-    Returns all network requests and responses with status codes, headers, and bodies.
+    Uses detected/default browser for accurate client-side behavior.
     """
     if not _sync_ensure_browser():
         return {"error": "Playwright not installed. Run: pip install playwright && playwright install chromium"}
@@ -158,12 +264,8 @@ async def browse_with_capture(url: str, wait_for_selector: Optional[str] = None,
     
     try:
         async with async_playwright() as p:
-            chrome_path = os.path.expanduser('~/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome')
-            if os.path.exists(chrome_path):
-                browser = await p.chromium.launch(headless=headless, executable_path=chrome_path)
-            else:
-                browser = await p.chromium.launch(headless=headless)
-            context = await browser.new_context(
+            browser_inst, browser_name = await launch_dynamic_browser(p, browser_choice=browser, headless=headless)
+            context = await browser_inst.new_context(
                 viewport={'width': 1280, 'height': 800},
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             )
@@ -181,7 +283,6 @@ async def browse_with_capture(url: str, wait_for_selector: Optional[str] = None,
             async def on_response(r):
                 try:
                     body = await r.text()
-                    # Truncate large responses
                     body_preview = body[:5000] if len(body) > 5000 else body
                 except Exception:
                     body_preview = "[binary/unreadable]"
@@ -193,7 +294,6 @@ async def browse_with_capture(url: str, wait_for_selector: Optional[str] = None,
                     'headers': dict(r.headers),
                     'body_preview': body_preview,
                 })
-            
             page.on('response', lambda r: asyncio.create_task(on_response(r)))
             
             response = await page.goto(url, wait_until='networkidle', timeout=wait_timeout * 1000)
@@ -208,7 +308,7 @@ async def browse_with_capture(url: str, wait_for_selector: Optional[str] = None,
             page_title = await page.title()
             final_url = page.url
             
-            await browser.close()
+            await browser_inst.close()
             
             return {
                 "status": "success",
@@ -219,19 +319,21 @@ async def browse_with_capture(url: str, wait_for_selector: Optional[str] = None,
                 "response_count": len(captured_responses),
                 "requests": [r for r in captured_requests if r['resource_type'] in ['xhr', 'fetch', 'doc', 'script']],
                 "responses": [r for r in captured_responses if r['status'] >= 400],
+                "browser_used": browser_name,
             }
             
     except Exception as e:
         return {"status": "error", "url": url, "error": str(e)}
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════
 # TOOL 3 - intercept_and_test_endpoint
-# ═══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════
 
 @mcp.tool()
 async def intercept_and_test_endpoint(url: str, endpoint_pattern: Optional[str] = None,
-                                       post_data: Optional[Dict] = None,
-                                       extra_headers: Optional[Dict] = None) -> dict:
+                                      post_data: Optional[Dict] = None,
+                                      extra_headers: Optional[Dict] = None,
+                                      browser: Optional[str] = None) -> dict:
     """
     Intercept specific API endpoint calls while browsing.
     
@@ -240,7 +342,7 @@ async def intercept_and_test_endpoint(url: str, endpoint_pattern: Optional[str] 
     - Test GraphQL introspection without automated scanners
     - Verify specific endpoint behavior manually
     
-    If endpoint_pattern provided, only captures matching URLs.
+    Uses detected/default browser for accurate behavior.
     """
     if not _sync_ensure_browser():
         return {"error": "Playwright not installed"}
@@ -255,16 +357,11 @@ async def intercept_and_test_endpoint(url: str, endpoint_pattern: Optional[str] 
     
     try:
         async with async_playwright() as p:
-            chrome_path = os.path.expanduser('~/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome')
-            if os.path.exists(chrome_path):
-                browser = await p.chromium.launch(headless=True, executable_path=chrome_path)
-            else:
-                browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context()
+            browser_inst, browser_name = await launch_dynamic_browser(p, browser_choice=browser, headless=True)
+            context = await browser_inst.new_context()
             page = await context.new_page()
             
             if post_data:
-                # Setup route interception for POST
                 async def handle_route(route):
                     await route.continue_(method='POST', post_data=post_data)
                 
@@ -272,7 +369,6 @@ async def intercept_and_test_endpoint(url: str, endpoint_pattern: Optional[str] 
                     pattern = re.compile(endpoint_pattern, re.IGNORECASE)
                     await context.route(f"https://{url}/**", handle_route)
             
-            # Track responses
             async def on_response(r):
                 url_match = endpoint_pattern is None or re.search(endpoint_pattern, r.url, re.IGNORECASE)
                 if url_match:
@@ -294,24 +390,26 @@ async def intercept_and_test_endpoint(url: str, endpoint_pattern: Optional[str] 
             
             await page.goto(url, wait_until='networkidle', timeout=15000)
             
-            await browser.close()
+            await browser_inst.close()
             
             return {
                 "status": "success",
                 "url": url,
                 "intercepted_count": len(intercepted),
                 "interceptions": intercepted,
+                "browser_used": browser_name,
             }
             
     except Exception as e:
         return {"status": "error", "url": url, "error": str(e)}
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════
 # TOOL 4 - check_xss_in_browser
-# ═══════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════════════
 
 @mcp.tool()
-async def check_xss_in_browser(url: str, param: str, payloads: Optional[List[str]] = None) -> dict:
+async def check_xss_in_browser(url: str, param: str, payloads: Optional[List[str]] = None,
+                               browser: Optional[str] = None) -> dict:
     """
     Verify XSS vulnerability using real browser execution.
     
@@ -320,7 +418,7 @@ async def check_xss_in_browser(url: str, param: str, payloads: Optional[List[str
     - Checking if payloads execute without DOM sanitization
     - Observing actual JavaScript behavior
     
-    Much more accurate than regex-based scanners.
+    Uses detected/default browser for engine-specific testing.
     """
     if not _sync_ensure_browser():
         return {"error": "Playwright not installed"}
@@ -330,7 +428,6 @@ async def check_xss_in_browser(url: str, param: str, payloads: Optional[List[str
     if not url.startswith(('http://', 'https://')):
         return {"error": "URL must include scheme (http:// or https://)"}
     
-    # Default XSS payloads
     default_payloads = [
         '<script>alert(1)</script>',
         '<img src=x onerror=alert(1)>',
@@ -345,37 +442,30 @@ async def check_xss_in_browser(url: str, param: str, payloads: Optional[List[str
     
     try:
         async with async_playwright() as p:
-            chrome_path = os.path.expanduser('~/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome')
-            if os.path.exists(chrome_path):
-                browser = await p.chromium.launch(headless=True, executable_path=chrome_path)
-            else:
-                browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context()
+            browser_inst, browser_name = await launch_dynamic_browser(p, browser_choice=browser, headless=True)
+            context = await browser_inst.new_context()
             
             for payload in payloads:
                 page = await context.new_page()
                 
-                # Track for XSS execution
                 xss_detected = False
                 
-                # Navigate with payload injected
                 test_url = f"{url}?{param}={payload}" if '?' not in url.split('#')[0] else url.replace(f'{param}=', f'{param}={payload}')
                 
                 try:
                     await page.goto(test_url, wait_until='domcontentloaded', timeout=10000)
                     
-                    # Check for alert dialog (XSS indicator)
                     try:
                         async with page.expect_event('dialog', timeout=2000):
                             pass
                     except Exception:
-                        # No dialog - check if payload is in page unescaped
                         content = await page.content()
                         if payload in content and '<script>' in content.lower():
                             xss_detected = True
                     
                 except Exception as e:
                     results.append({"payload": payload, "error": str(e)})
+                    await page.close()
                     continue
                 
                 if xss_detected:
@@ -389,7 +479,7 @@ async def check_xss_in_browser(url: str, param: str, payloads: Optional[List[str
                 
                 await page.close()
             
-            await browser.close()
+            await browser_inst.close()
             
             return {
                 "status": "success",
@@ -398,6 +488,7 @@ async def check_xss_in_browser(url: str, param: str, payloads: Optional[List[str
                 "confirmed_xss": confirmed_xss,
                 "total_payloads_tested": len(payloads),
                 "results": results,
+                "browser_used": browser_name,
             }
             
     except Exception as e:
