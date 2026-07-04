@@ -1,0 +1,4 @@
+id,target_id,title,vulnerability_type,owasp_category,severity,cvss_score,cvss_vector,url,parameter,payload,description,steps_to_reproduce,impact,remediation,evidence,status,created_at,updated_at
+2,1,Insecure Session Cookie Configuration - Missing HttpOnly/Secure Flags,Cookie Security Misconfiguration,A01:2023 Broken Object Level Authorization,Medium,,,,,,,,,,,new,2026-06-30 08:17:00,2026-06-30 08:17:00
+1,1,Missing Brute Force Protection on Auth Endpoint,Missing Rate Limiting,A07:2017 Identification and Authentication Failures,Medium,,,,,,,,,,,new,2026-06-30 07:35:04,2026-06-30 07:35:04
+3,1,Reflected XSS on Search Parameters - blog.nubank.com.br,Reflected XSS,A03:2021 Injection,Low,,,,,,,,,,,rejected,2026-06-30 08:54:19,2026-06-30 08:54:52

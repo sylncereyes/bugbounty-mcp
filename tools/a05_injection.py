@@ -3,16 +3,29 @@ import asyncio
 import time as _time
 import logging
 from mcp_instance import mcp
-from tools.db import save_finding, is_in_scope
-from tools.http_utils import get_client, delay
+from tools.db import save_finding
+from tools.http_utils import get_client, secure_request
 
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def sqli_test(url: str, params: dict, method: str = "GET", target_id: int = None) -> dict:
-    """Tests specified parameters for SQL Injection vulnerabilities."""
-    if target_id is not None and not is_in_scope(target_id, url):
-        return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
+async def sqli_test(url: str, params: dict, method: str = "GET", target_id: int = None, dry_run: bool = None) -> dict:
+    """Tests specified parameters for SQL Injection vulnerabilities.
+    
+    Args:
+        url: Target URL to test
+        params: Dictionary of parameters to test (e.g., {"q": "test"})
+        method: HTTP method (GET or POST)
+        target_id: Target ID from database for scope validation
+        dry_run: If True, return payloads without executing requests
+    
+    Returns:
+        dict with 'vulnerable' boolean and 'vulnerable_params' list
+    
+    Raises:
+        ValueError: If target_id is provided but URL is out of scope
+    """
+    # secure_request handles scope validation internally
     payloads = [
         {"payload": "' OR '1'='1", "type": "Boolean"},
         {"payload": "1' ORDER BY 1--", "type": "Error"},
@@ -22,24 +35,39 @@ async def sqli_test(url: str, params: dict, method: str = "GET", target_id: int 
     ]
     vulnerable = False
     vulnerable_params = []
+    payload_summary = []  # For dry-run mode
     
     async with get_client() as client:
-        for p_name, p_val in params.items():
+        for p_name, p_val in list(params.items()):
             for p in payloads:
                 test_params = params.copy()
                 test_params[p_name] = f"{p_val}{p['payload']}"
                 
                 try:
-                    await delay()
                     if method.upper() == "GET":
                         start = _time.monotonic()
-                        res = await client.get(url, params=test_params)
+                        res = await secure_request(
+                            client=client, method="GET", url=url, 
+                            target_id=target_id, dry_run=dry_run, params=test_params
+                        )
                         elapsed = _time.monotonic() - start
                     else:
                         start = _time.monotonic()
-                        res = await client.post(url, data=test_params)
+                        res = await secure_request(
+                            client=client, method="POST", url=url,
+                            target_id=target_id, dry_run=dry_run, data=test_params
+                        )
                         elapsed = _time.monotonic() - start
-                        
+                    
+                    # Handle dry-run response
+                    if dry_run or DRY_RUN:
+                        payload_summary.append({
+                            "param": p_name, 
+                            "payload": p['payload'],
+                            "would_test": True
+                        })
+                        continue
+                    
                     body = res.text.lower()
                     
                     # 1. Error SQL check
@@ -50,8 +78,8 @@ async def sqli_test(url: str, params: dict, method: str = "GET", target_id: int 
                         if err in body:
                             evidence = f"Database error encountered: {err}"
                             found = True
-                            
-                    # 2. Time based SQL check (types: Time-MySQL, Time-MSSQL)
+                        
+                    # 2. Time based SQL check
                     if p["type"].startswith("Time") and elapsed >= 3.0:
                         evidence = f"Time-based response delay: {elapsed:.2f}s"
                         found = True
@@ -65,8 +93,14 @@ async def sqli_test(url: str, params: dict, method: str = "GET", target_id: int 
                             "evidence": evidence
                         })
                         break
+                except ValueError:  # Re-raise scope validation errors
+                    raise
                 except Exception as e:
                     logger.debug("SQLi test error for %s: %s", p_name, e)
+    
+    # Aggregate payloads in dry-run mode
+    if payload_summary and not vulnerable:
+        vulnerable_params = payload_summary
 
     if vulnerable and target_id is not None:
         save_finding(

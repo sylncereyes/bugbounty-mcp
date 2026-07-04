@@ -8,7 +8,7 @@ import hashlib
 import logging
 from mcp_instance import mcp
 from tools.db import save_finding, is_in_scope
-from tools.http_utils import get_client
+from tools.http_utils import secure_request, get_client
 
 logger = logging.getLogger("agy")
 
@@ -86,7 +86,7 @@ async def jwt_analyze(token: str, target_id: int = None) -> dict:
 async def ssl_cipher_check(hostname: str, port: int = 443, target_id: int = None) -> dict:
     """Checks for weak SSL/TLS cipher suites (compatibility wrapper)."""
     # Simply delegates or matches local check
-    from tools.http_utils import tls_connect
+    from tools.http_utils import secure_request, tls_connect
     tls_issues = []
     vulnerable = False
     
@@ -177,7 +177,7 @@ async def check_https_redirect(url: str, target_id: int = None) -> dict:
         
     async with get_client(follow_redirects=False) as client:
         try:
-            res = await client.get(target_url)
+            res = await secure_request(client, "GET", target_url)
             # Check redirect status
             if res.status_code in [301, 302, 307, 308]:
                 location = res.headers.get("Location", "")
@@ -194,7 +194,7 @@ async def check_https_redirect(url: str, target_id: int = None) -> dict:
     hsts = ""
     async with get_client() as client:
         try:
-            res = await client.get(https_url)
+            res = await secure_request(client, "GET", https_url)
             hsts = res.headers.get("Strict-Transport-Security", "")
             if hsts:
                 hsts_present = True
@@ -243,7 +243,7 @@ async def check_sensitive_data_exposure(url: str, target_id: int = None) -> dict
     
     async with get_client() as client:
         try:
-            res = await client.get(url)
+            res = await secure_request(client, "GET", url)
             body = res.text
         except Exception as e:
             return {"error": f"Failed to retrieve page: {str(e)}"}

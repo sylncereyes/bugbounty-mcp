@@ -53,7 +53,9 @@ pip install -r requirements.txt
 
 # 4. Konfigurasi Environment Variables
 cp .env.example .env
-# Edit .env sesuai kebutuhan
+# EDIT .env file - IMPORTANT: Set ENCRYPTION_KEY before first run!
+# Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# Set MCP_API_KEY if you plan to use --transport sse --host 0.0.0.0
 
 # 5. Clone Knowledge Base (required)
 git clone --depth 1 https://github.com/HackTricks-wiki/hacktricks knowledge_base/hacktricks
@@ -250,3 +252,46 @@ Lokasi config file:
 **🚨 PERINGATAN KERAS: Tool ini melakukan REAL network requests.**
 
 Gunakan HANYA pada target yang in-scope program bug bounty resmi. Segala konsekuensi hukum atas penyalahgunaan bukan tanggung jawab pembuat tool ini.
+
+---
+
+## 🔐 Security Configuration
+
+### SSE Authentication (Required for Remote Access)
+
+When running SSE mode on `0.0.0.0`, you **MUST** set `MCP_API_KEY`:
+
+```bash
+# Generate secure API key
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Add to .env
+echo "MCP_API_KEY=your-generated-key-here" >> .env
+```
+
+Client requests must include the Bearer token:
+```http
+Authorization: Bearer your-generated-key-here
+```
+
+### Dry-Run Mode
+
+By default, all destructive/aggressive tools run in dry-run mode (`DRY_RUN=true`). 
+To enable actual requests:
+
+```bash
+echo "DRY_RUN=false" >> .env
+```
+
+### Encryption for Findings
+
+Set `ENCRYPTION_KEY` in `.env` to encrypt sensitive finding data:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Add to `.env`:
+```
+ENCRYPTION_KEY=your-fernet-key-here
+```

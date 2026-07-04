@@ -4,7 +4,7 @@ import tldextract
 import urllib.parse
 from mcp_instance import mcp
 from tools.db import save_finding, is_in_scope
-from tools.http_utils import get_client, delay
+from tools.http_utils import secure_request, get_client, delay
 import logging
 logger = logging.getLogger("agy")
 
@@ -27,7 +27,7 @@ async def detect_vulnerable_js_libs(url: str, target_id: int = None) -> dict:
 
     async with get_client() as client:
         try:
-            res = await client.get(url)
+            res = await secure_request(client, "GET", url)
             html = res.text
         except Exception as e:
             return {"error": f"Failed to retrieve page: {str(e)}"}
@@ -98,7 +98,7 @@ async def check_package_json_exposure(base_url: str, target_id: int = None) -> d
             await delay()
             target = base_url.rstrip("/") + f
             try:
-                res = await client.get(target)
+                res = await secure_request(client, "GET", target)
                 if res.status_code == 200:
                     exposed_files.append(f)
                     # Simple parse check for package.json dependencies
@@ -169,7 +169,7 @@ async def scan_github_secrets(repo_url: str = None, target_domain: str = None, t
         }
         try:
             url = f"https://api.github.com/search/code?q={urllib.parse.quote(query)}"
-            res = await client.get(url, headers=headers)
+            res = await secure_request(client, "GET", url, headers=headers)
             if res.status_code == 200:
                 items = res.json().get("items", [])
                 for item in items:
@@ -212,7 +212,7 @@ async def check_cdn_integrity(url: str, target_id: int = None) -> dict:
     
     async with get_client() as client:
         try:
-            res = await client.get(url)
+            res = await secure_request(client, "GET", url)
             html = res.text
         except Exception as e:
             return {"error": f"Failed to fetch url: {str(e)}"}
@@ -274,7 +274,7 @@ async def check_dependency_confusion(domain: str, target_id: int = None) -> dict
         for pkg in test_packages:
             await delay()
             try:
-                res = await client.get(f"https://registry.npmjs.org/{pkg}")
+                res = await secure_request(client, "GET", f"https://registry.npmjs.org/{pkg}")
                 # If package does not exist (404), it might be vulnerable to registration
                 if res.status_code == 404:
                     vulnerable.append({

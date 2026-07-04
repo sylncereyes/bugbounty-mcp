@@ -1,7 +1,7 @@
 import re
 from mcp_instance import mcp
 from tools.db import save_finding, is_in_scope
-from tools.http_utils import get_client, delay
+from tools.http_utils import secure_request, get_client, delay
 import logging
 logger = logging.getLogger("agy")
 
@@ -23,7 +23,7 @@ async def log_injection_test(url: str, params: dict = None, target_id: int = Non
                 test_params = (params or {"q": "search"}).copy()
                 test_params[p_name] = p
                 try:
-                    res = await client.get(url, params=test_params)
+                    res = await secure_request(client, "GET", url, params=test_params)
                     # Log injection is verified by checking server log files.
                     # Since we can't read internal logs directly, we flag reflection as a potential risk.
                     if p in res.text:
@@ -66,7 +66,7 @@ async def error_disclosure_check(url: str, trigger_methods: list = None, target_
     
     async with get_client() as client:
         try:
-            res = await client.get(url, params=test_params)
+            res = await secure_request(client, "GET", url, params=test_params)
             body = res.text
             
             # Framework traces
@@ -143,7 +143,7 @@ async def check_debug_endpoints(base_url: str, target_id: int = None) -> dict:
         for ep in endpoints:
             target = base_url.rstrip("/") + ep
             try:
-                res = await client.get(target)
+                res = await secure_request(client, "GET", target)
                 if res.status_code == 200:
                     found.append({
                         "path": ep,

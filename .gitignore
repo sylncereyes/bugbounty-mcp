@@ -2,6 +2,11 @@
 database/*.db
 database/*.db-shm  
 database/*.db-wal
+bugbounty.db
+
+# Environment file with secrets
+.env
+.env.local
 
 # Large knowledge base repos (clone separately per README)
 knowledge_base/hacktricks/

@@ -53,6 +53,14 @@ VIRUSTOTAL_API_KEY = os.getenv("VIRUSTOTAL_API_KEY", "")
 INTERACTSH_SERVER = os.getenv("INTERACTSH_SERVER", "")
 INTERACTSH_TOKEN = os.getenv("INTERACTSH_TOKEN", "")
 
+# ─── MCP SSE Authentication ───────────────────────────────────────────────────
+# Required when exposing SSE on 0.0.0.0. Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+MCP_API_KEY = os.getenv("MCP_API_KEY", "")
+
 # ─── Paths ─────────────────────────────────────────────────────────────────────
 REPORTS_DIR = os.getenv("REPORTS_DIR", "reports")
 DB_PATH_ENV = os.getenv("DB_PATH", "database/bugbounty.db")
+
+# ─── Dry-Run Mode ───────────────────────────────────────────────────────────────
+# dry_run=True means tools only return payloads that WOULD be sent, without actual execution
+DRY_RUN = os.getenv("DRY_RUN", "true").lower() in ("true", "1", "yes")

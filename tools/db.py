@@ -171,7 +171,18 @@ def delete_target(target_id: int) -> bool:
 
 
 def is_in_scope(target_id: int, url: str) -> bool:
-    """Check if a URL is within the target's declared scope using proper domain matching."""
+    """Check if a URL is within the target's declared scope using proper domain matching.
+    
+    For security, this ONLY checks the explicit scope list - it does NOT fall back
+    to the base domain. This prevents accidental out-of-scope testing.
+    
+    Args:
+        target_id: The target ID from database
+        url: The URL to validate
+    
+    Returns:
+        True if URL is within scope, False otherwise
+    """
     target = get_target(target_id)
     if not target:
         return False
@@ -198,11 +209,31 @@ def is_in_scope(target_id: int, url: str) -> bool:
             # Exact match only
             if hostname == s_lower:
                 return True
-    # Also check base domain from target record
-    base_domain = target.get("domain", "").lower().strip()
-    if base_domain and (hostname == base_domain or hostname.endswith("." + base_domain)):
-        return True
+    # REMOVED: No longer fall back to base domain - requires explicit scope entry
+    # This is a security hardening to prevent accidental out-of-scope testing
     return False
+
+
+def validate_scope_or_fail(target_id: int, url: str) -> None:
+    """Validate that a URL is within the target's declared scope.
+    
+    Raises:
+        ValueError: If target_id is invalid or URL is out of scope
+    """
+    target = get_target(target_id)
+    if not target:
+        raise ValueError(f"INVALID_TARGET: Target ID {target_id} does not exist in database. "
+                        f"Use add_target() to create a target first.")
+    
+    if not is_in_scope(target_id, url):
+        program_name = target.get("program_name", "Unknown")
+        domain = target.get("domain", "Unknown")
+        raise ValueError(
+            f"OUT_OF_SCOPE: URL '{url}' is NOT authorized for target '{program_name}' ({domain}). "
+            f"Target scope: {target.get('scope', '[]')}. "
+            f"Use add_target() to add or update target scope. "
+            f"ALWAYS verify scope before running security tests."
+        )
 
 
 # ─────────────────────────────────────────────

@@ -1,9 +1,11 @@
-"""StealthVision-MCP Server - Main Entry Point
+"""
+StealthVision-MCP Server - Main Entry Point
 OWASP Top 10 2025 Vulnerability Assessment Platform
 
 Usage:
     python server.py                    # stdio transport (for Claude Desktop)
     python server.py --transport sse    # SSE transport (for web/remote)
+    python server.py --transport sse --host 0.0.0.0  # Remote SSE (requires MCP_API_KEY)
 
 Claude Desktop config (claude_desktop_config.json):
     {
@@ -22,6 +24,10 @@ Claude Desktop config (claude_desktop_config.json):
 import sys
 import os
 import importlib
+import uvicorn
+from starlette.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 # Ensure the project root is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -32,7 +38,33 @@ load_dotenv()
 # ─── Import the shared FastMCP instance (+ Universal System Prompt) ──────────
 from mcp_instance import mcp, _SYSTEM_PROMPT
 
-# ─── Import all tool modules (each registers its tools via @mcp.tool()) ───────
+# ─── SSE Authentication Middleware ────────────────────────────────────────
+class SSEAuthMiddleware(BaseHTTPMiddleware):
+    """Rejects SSE requests without valid MCP_API_KEY Authorization header."""
+    
+    async def dispatch(self, request, call_next):
+        # Get API key from config
+        from config import MCP_API_KEY
+        
+        if MCP_API_KEY:
+            auth_header = request.headers.get("Authorization", "")
+            if not auth_header.startswith("Bearer "):
+                return Response(
+                    content='{"error": "Missing Authorization header"}',
+                    status_code=401,
+                    media_type="application/json"
+                )
+            provided_key = auth_header[7:]  # Remove "Bearer " prefix
+            if provided_key != MCP_API_KEY:
+                return Response(
+                    content='{"error": "Invalid API key"}',
+                    status_code=403,
+                    media_type="application/json"
+                )
+        
+        return await call_next(request)
+
+# ─── Import all tool modules (each registers their tools via @mcp.tool()) ───────
 _TOOL_MODULES = [
     "tools.a01_access_control",
     "tools.a02_misconfiguration",
@@ -112,7 +144,8 @@ for module_name in _TOOL_MODULES:
 
 if __name__ == "__main__":
     import argparse
-    from config import VERIFY_SSL
+    from config import VERIFY_SSL, MCP_API_KEY
+    import logging
 
     parser = argparse.ArgumentParser(
         description="StealthVision-MCP Server - OWASP Top 10 2025"
@@ -126,7 +159,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--host",
         default="127.0.0.1",
-        help="Host for SSE transport (default: 127.0.0.1; use 0.0.0.0 for remote access — NOT recommended without auth)",
+        help="Host for SSE transport (default: 127.0.0.1; use 0.0.0.0 for remote access -- requires MCP_API_KEY)",
     )
     parser.add_argument(
         "--port",
@@ -143,8 +176,8 @@ if __name__ == "__main__":
 
     # ── Confirm Universal System Prompt injection ──────────────────────────────
     print(
-        f"[StealthVision] ✅ Universal Bug Bounty System Prompt ACTIVE "
-        f"({len(_SYSTEM_PROMPT):,} chars) — "
+        f"[StealthVision] Universal Bug Bounty System Prompt ACTIVE "
+        f"({len(_SYSTEM_PROMPT):,} chars) -- "
         "all connected MCP clients will adopt the **StealthVision** persona.",
         file=sys.stderr,
     )
@@ -153,12 +186,25 @@ if __name__ == "__main__":
         print("[StealthVision] WARNING: SSL verification is disabled (VERIFY_SSL=false)", file=sys.stderr)
 
     if args.transport == "sse":
-        print(f"[StealthVision] Starting SSE server on {args.host}:{args.port}", file=sys.stderr)
-        # mcp>=1.27 removed host/port kwargs from .run() — they're set on settings.
-        # See mcp.server.fastmcp.run_sse_async: it reads self.settings.host/port.
+        # ─── SSE Authentication Setup ────────────────────────────────────────────
         mcp.settings.host = args.host
         mcp.settings.port = args.port
-        mcp.run(transport="sse")
+        
+        # Get SSE app instance
+        sse_app_instance = mcp.sse_app()
+        
+        if args.host == "0.0.0.0":
+            if not MCP_API_KEY:
+                print("[SECURITY WARNING] SSE exposed on 0.0.0.0 WITHOUT authentication!", file=sys.stderr)
+                print("[SECURITY WARNING] Set MCP_API_KEY in .env before running in production!", file=sys.stderr)
+                # Still run, but without auth (dangerous in production)
+            else:
+                # Wrap SSE app with auth middleware
+                sse_app_instance = SSEAuthMiddleware(app=sse_app_instance)
+                print("[StealthVision] SSE authentication ENABLED (Bearer token required)", file=sys.stderr)
+        
+        print(f"[StealthVision] Starting SSE server on {args.host}:{args.port}", file=sys.stderr)
+        uvicorn.run(sse_app_instance, host=args.host, port=args.port, log_level="info")
     else:
         print("[StealthVision] Starting stdio server...", file=sys.stderr)
         mcp.run(transport="stdio")

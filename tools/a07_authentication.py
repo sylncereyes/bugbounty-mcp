@@ -1,6 +1,6 @@
 from mcp_instance import mcp
 from tools.db import save_finding, is_in_scope
-from tools.http_utils import get_client, delay
+from tools.http_utils import secure_request, get_client, delay
 import logging
 logger = logging.getLogger("agy")
 
@@ -16,7 +16,7 @@ async def brute_force_protection_check(login_url: str, username_field: str = "us
     async with get_client() as client:
         for i in range(10):
             try:
-                res = await client.post(
+                res = await secure_request(client, "POST", 
                     login_url,
                     json={username_field: test_username, password_field: f"wrongpass_{i}"}
                 )
@@ -67,7 +67,7 @@ async def credential_stuffing_simulation(login_url: str, username_field: str = "
     async with get_client() as client:
         for user, pwd in credentials:
             try:
-                res = await client.post(
+                res = await secure_request(client, "POST", 
                     login_url,
                     json={username_field: user, password_field: pwd}
                 )
@@ -110,7 +110,7 @@ async def session_management_check(url: str, login_url: str = None, username: st
     
     async with get_client() as client:
         try:
-            res = await client.get(url)
+            res = await secure_request(client, "GET", url)
             cookies = res.headers.get_list("Set-Cookie")
             for c in cookies:
                 if any(sess in c.lower() for sess in ["session", "token", "id", "jwt"]):
@@ -174,7 +174,7 @@ async def jwt_attack_test(url: str, token: str, target_id: int = None) -> dict:
     
     async with get_client() as client:
         try:
-            res = await client.get(url, headers={"Authorization": f"Bearer {none_token}"})
+            res = await secure_request(client, "GET", url, headers={"Authorization": f"Bearer {none_token}"})
             if res.status_code == 200 and "unauthorized" not in res.text.lower():
                 none_bypass = True
         except Exception as e:
@@ -211,7 +211,7 @@ async def password_reset_test(reset_url: str, email: str = "test@example.com", t
     injected = False
     async with get_client() as client:
         try:
-            res = await client.post(
+            res = await secure_request(client, "POST", 
                 reset_url,
                 json={"email": email},
                 headers={"Host": "evil.com", "X-Forwarded-Host": "evil.com"}
@@ -259,7 +259,7 @@ async def oauth_misconfiguration_check(authorization_url: str, client_id: str = 
         test_url = authorization_url.replace(redirect_uri, evil_uri)
         async with get_client() as client:
             try:
-                res = await client.get(test_url)
+                res = await secure_request(client, "GET", test_url)
                 if res.status_code in [302, 301] and res.headers.get("Location", "").startswith(evil_uri):
                     issues.append("OAuth Open Redirect bypass via redirect_uri parameter")
             except Exception as e:
@@ -297,7 +297,7 @@ async def check_plaintext_credentials(url: str, target_id: int = None) -> dict:
     # We inspect headers for Basic Authentication
     async with get_client() as client:
         try:
-            res = await client.get(url)
+            res = await secure_request(client, "GET", url)
             auth_header = res.headers.get("WWW-Authenticate", "")
             if "basic" in auth_header.lower():
                 basic_auth = True

@@ -1,0 +1,2 @@
+Target,Title,Severity,Type,OWASP
+nu.com.co,Reflected XSS on blog.nu.com.co,Medium,XSS,A03:2021
