@@ -45,33 +45,10 @@ class SSRFBlockedError(ValueError):
     pass
 
 
-class PinnedResolverTransport(httpx.AsyncHTTPTransport):
+async def _resolve_and_validate(hostname: str) -> str:
     """
-    Transport that pins connections to a pre-validated IP address
-    while preserving the original hostname for TLS SNI and verification.
-    """
-    def __init__(self, pinned_ip: str, **kwargs):
-        super().__init__(**kwargs)
-        self._pinned_ip = pinned_ip
-
-    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        # Preserve original hostname from the request (might have been mutated before)
-        original_host = request.url.host
-        if not original_host:
-            # Fallback to the last known good hostname, if we have one
-            raise SSRFBlockedError("Cannot resolve target hostname.")
-
-        request.url = request.url.copy_with(host=self._pinned_ip)
-        request.headers["host"] = original_host
-        return await super().handle_async_request(request)
-
-
-async def _resolve_and_pin(hostname: str) -> Tuple[str, str]:
-    """
-    Resolve hostname asynchronously, validate against deny-list,
-    and return (original_hostname, pinned_ip_string).
-    
-    The pinned_ip is the FIRST non‑blocked IP (IPv4 preferred).
+    Resolve hostname asynchronously and validate against deny-list.
+    Returns the FIRST non-blocked IP address as a string.
     Raises SSRFBlockedError if resolution fails or all resolved IPs are blocked.
     """
     if not hostname:
@@ -95,7 +72,7 @@ async def _resolve_and_pin(hostname: str) -> Tuple[str, str]:
             ip = ip.ipv4_mapped
 
         if any(ip in net for net in _DENIED_NETWORKS):
-            continue   # skip blocked networks
+            continue
 
         if isinstance(ip, ipaddress.IPv4Address) or pinned_ip is None:
             pinned_ip = ip
@@ -103,7 +80,7 @@ async def _resolve_and_pin(hostname: str) -> Tuple[str, str]:
     if pinned_ip is None:
         raise SSRFBlockedError(f"{hostname} resolves ONLY to blocked ranges")
 
-    return hostname, str(pinned_ip)
+    return str(pinned_ip)
 
 
 async def secure_request(
@@ -118,38 +95,40 @@ async def secure_request(
     **kwargs,
 ) -> httpx.Response:
     """
-    Execute HTTP request with SSRF protection (async DNS + transport pinning),
-    scope validation, and dry‑run support.
+    Execute HTTP request with SSRF protection, scope validation, and dry-run support.
+    
+    This function validates the target URL against:
+    1. SSRF denylist - blocks requests to internal/private IP ranges
+    2. Scope enforcement - only allows requests to authorized targets
+    
+    Note: The SSRF protection validates the DNS resolution BEFORE making the request.
+    For full DNS rebinding protection, consider using a custom transport that
+    caches the resolved IP for the connection lifetime.
     """
-    # 1. SSRF mitigation
-    hostname, pinned_ip = await _resolve_and_pin(urlparse(url).hostname)
+    # 1. SSRF mitigation - resolve and validate hostname
+    hostname = urlparse(url).hostname
+    await _resolve_and_validate(hostname)
 
     # 2. Scope validation
     validate_scope_or_fail(target_id, url)
 
-    # 3. Dry‑run
+    # 3. Dry-run
     if dry_run is None:
         dry_run = DRY_RUN
     if dry_run:
-        logger.info(f"[DRY RUN] {method.upper()} {url} (pinned to {pinned_ip})")
+        logger.info(f"[DRY RUN] {method.upper()} {url}")
         return httpx.Response(200, text="[DRY RUN] Request not executed", request=httpx.Request(method, url))
 
-    # 4. Wrap client transport with pinned resolver
-    original_transport = client._transport
-    client._transport = PinnedResolverTransport(pinned_ip=pinned_ip)
-
-    try:
-        return await _request_with_backoff(
-            client=client,
-            method=method,
-            url=url,
-            max_retries=max_retries,
-            base_delay=base_delay,
-            follow_redirects=follow_redirects,
-            **kwargs,
-        )
-    finally:
-        client._transport = original_transport
+    # 4. Execute with backoff
+    return await _request_with_backoff(
+        client=client,
+        method=method,
+        url=url,
+        max_retries=max_retries,
+        base_delay=base_delay,
+        follow_redirects=follow_redirects,
+        **kwargs,
+    )
 
 
 async def _request_with_backoff(
@@ -164,7 +143,6 @@ async def _request_with_backoff(
     attempt = 0
     while True:
         try:
-            # httpx correctly uses SNI from request.url.hostname, not the host header
             return await client.request(
                 method,
                 url,
@@ -190,17 +168,12 @@ def make_safe_request(
     **kwargs,
 ):
     """
-    High‑level helper for modules that need one‑off requests.
+    High-level helper for modules that need one-off requests.
     Reuses the provided client (if any) or creates a new one.
     """
     owns_client = client is None
     if owns_client:
-        client = httpx.AsyncClient(
-            timeout=DEFAULT_TIMEOUT,
-            verify=VERIFY_SSL,
-            headers={"User-Agent": USER_AGENT},
-            follow_redirects=False,
-        )
+        client = get_client()
 
     async def _inner():
         return await secure_request(
