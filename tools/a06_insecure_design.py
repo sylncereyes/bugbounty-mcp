@@ -7,7 +7,7 @@ from tools.http_utils import secure_request, get_client, delay
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def rate_limit_check(url: str, target_id: int, method: str = "POST", data: dict = None, requests_count: int = 15)) ->:
+async def rate_limit_check(url: str, target_id: int, method: str = "POST", data: dict = None, requests_count: int = 15) -> dict:
     """Sends multiple requests in rapid succession to check if rate limiting is enforced."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -62,7 +62,7 @@ async def rate_limit_check(url: str, target_id: int, method: str = "POST", data:
     }
 
 @mcp.tool()
-async def business_logic_price_test(checkout_url: str, target_id: int, product_url: str = None, params: dict = None)) ->:
+async def business_logic_price_test(checkout_url: str, target_id: int, product_url: str = None, params: dict = None) -> dict:
     """Checks for price or quantity manipulation vulnerabilities in shopping cart processes."""
     if not is_in_scope(target_id, checkout_url):
         return {"error": f"URL {checkout_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -104,7 +104,7 @@ async def business_logic_price_test(checkout_url: str, target_id: int, product_u
     }
 
 @mcp.tool()
-async def captcha_bypass_check(url: str, target_id: int, form_data: dict = None)) ->:
+async def captcha_bypass_check(url: str, target_id: int, form_data: dict = None) -> dict:
     """Evaluates if CAPTCHA restrictions can be bypassed by removing parameters."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -151,14 +151,14 @@ async def captcha_bypass_check(url: str, target_id: int, form_data: dict = None)
     }
 
 @mcp.tool()
-async def race_condition_test(url: str, target_id: int, method: str = "POST", data: dict = None, concurrent_count: int = 8)) ->:
+async def race_condition_test(url: str, target_id: int, method: str = "POST", data: dict = None, concurrent_count: int = 8) -> dict:
     """Sends concurrent async HTTP requests to check for race conditions (e.g. transfer/coupon double-use)."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     success_count = 0
     responses = []
     
-    async def send_req(client)):
+    async def send_req(client):
         try:
             if method.upper() == "POST":
                 res = await secure_request(client, "POST", url, json=data)
@@ -202,7 +202,7 @@ async def race_condition_test(url: str, target_id: int, method: str = "POST", da
     }
 
 @mcp.tool()
-async def password_policy_check(register_url: str, target_id: int, login_url: str = None)) ->:
+async def password_policy_check(register_url: str, target_id: int, login_url: str = None) -> dict:
     """Verifies register endpoint acceptance of weak passwords."""
     if not is_in_scope(target_id, register_url):
         return {"error": f"URL {register_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -242,7 +242,7 @@ async def password_policy_check(register_url: str, target_id: int, login_url: st
     }
 
 @mcp.tool()
-async def mfa_bypass_check(login_url: str, target_id: int, mfa_url: str = None, username: str = None, password: str = None)) ->:
+async def mfa_bypass_check(login_url: str, target_id: int, mfa_url: str = None, username: str = None, password: str = None) -> dict:
     """Analyzes if MFA authentication controls can be bypassed by skipping steps."""
     if not is_in_scope(target_id, login_url):
         return {"error": f"URL {login_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -295,7 +295,7 @@ async def mfa_bypass_check(login_url: str, target_id: int, mfa_url: str = None, 
     }
 
 @mcp.tool()
-async def account_enumeration_test(login_url: str, target_id: int, register_url: str = None, reset_url: str = None, usernames: list = None)) ->:
+async def account_enumeration_test(login_url: str, target_id: int, register_url: str = None, reset_url: str = None, usernames: list = None) -> dict:
     """Tests if differences in response messages or timing leaks valid accounts."""
     if not is_in_scope(target_id, login_url):
         return {"error": f"URL {login_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}

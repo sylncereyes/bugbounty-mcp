@@ -101,7 +101,7 @@ async def idor_test(url: str, id_param: str, test_ids: list, target_id: int, met
     }
 
 @mcp.tool()
-async def cors_misconfiguration_check(url: str, target_id: int) ->:
+async def cors_misconfiguration_check(url: str, target_id: int) -> dict:
     """
     Tests CORS configuration by sending requests with custom Origin headers.
     """
@@ -157,7 +157,7 @@ async def cors_misconfiguration_check(url: str, target_id: int) ->:
     }
 
 @mcp.tool()
-async def path_traversal_test(url: str, param: str, target_id: int) ->:
+async def path_traversal_test(url: str, param: str, target_id: int) -> dict:
     """
     Tests for path traversal vulnerabilities by injecting common payloads.
     """
@@ -206,7 +206,7 @@ async def path_traversal_test(url: str, param: str, target_id: int) ->:
     }
 
 @mcp.tool()
-async def http_methods_check(url: str, target_id: int) ->:
+async def http_methods_check(url: str, target_id: int) -> dict:
     """
     Checks what HTTP methods are supported by the target endpoint.
     """
@@ -249,7 +249,7 @@ async def http_methods_check(url: str, target_id: int) ->:
     }
 
 @mcp.tool()
-async def forced_browsing_scan(base_url: str, target_id: int, wordlist_type: str = "common") ->:
+async def forced_browsing_scan(base_url: str, target_id: int, wordlist_type: str = "common") -> dict:
     """
     Scans for predictable resource locations. Wordlist types: common, admin, backup, api.
     """
@@ -303,7 +303,7 @@ async def forced_browsing_scan(base_url: str, target_id: int, wordlist_type: str
     }
 
 @mcp.tool()
-async def access_control_bypass_test(url: str, target_id: int, bypass_header: str = None) ->:
+async def access_control_bypass_test(url: str, target_id: int, bypass_header: str = None) -> dict:
     """
     Tests if access control can be bypassed using headers like X-Original-URL.
     """
@@ -364,7 +364,7 @@ async def access_control_bypass_test(url: str, target_id: int, bypass_header: st
     }
 
 @mcp.tool()
-async def privilege_escalation_test(url: str, low_priv_cookie: str, high_priv_endpoint: str, target_id: int) ->:
+async def privilege_escalation_test(url: str, low_priv_cookie: str, high_priv_endpoint: str, target_id: int) -> dict:
     """
     Checks if high-privilege endpoints can be accessed with low-privilege cookies.
     """

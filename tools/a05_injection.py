@@ -9,7 +9,7 @@ from tools.http_utils import get_client, secure_request
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def sqli_test(url: str, params: dict, target_id: int, method: str = "GET", dry_run: bool = None)) ->:
+async def sqli_test(url: str, params: dict, target_id: int, method: str = "GET", dry_run: bool = None) -> dict:
     """Tests specified parameters for SQL Injection vulnerabilities.
     
     Args:
@@ -123,7 +123,7 @@ async def sqli_test(url: str, params: dict, target_id: int, method: str = "GET",
     }
 
 @mcp.tool()
-async def xss_test(url: str, params: dict, target_id: int, method: str = "GET")) ->:
+async def xss_test(url: str, params: dict, target_id: int, method: str = "GET") -> dict:
     """Tests specified parameters for Reflected XSS vulnerabilities."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -182,7 +182,7 @@ async def xss_test(url: str, params: dict, target_id: int, method: str = "GET"))
     }
 
 @mcp.tool()
-async def command_injection_test(url: str, params: dict, target_id: int, method: str = "GET")) ->:
+async def command_injection_test(url: str, params: dict, target_id: int, method: str = "GET") -> dict:
     """Tests parameters for OS Command Injection."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -254,7 +254,7 @@ async def command_injection_test(url: str, params: dict, target_id: int, method:
     }
 
 @mcp.tool()
-async def ssrf_test(url: str, params: dict, target_id: int, ssrf_payload: str = None, method: str = "GET")) ->:
+async def ssrf_test(url: str, params: dict, target_id: int, ssrf_payload: str = None, method: str = "GET") -> dict:
     """Tests parameters for Server-Side Request Forgery."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -320,7 +320,7 @@ async def ssrf_test(url: str, params: dict, target_id: int, ssrf_payload: str = 
     }
 
 @mcp.tool()
-async def ssti_test(url: str, params: dict, target_id: int, method: str = "GET")) ->:
+async def ssti_test(url: str, params: dict, target_id: int, method: str = "GET") -> dict:
     """Tests parameters for Server-Side Template Injection."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -383,7 +383,7 @@ async def ssti_test(url: str, params: dict, target_id: int, method: str = "GET")
     }
 
 @mcp.tool()
-async def xxe_test(url: str, target_id: int, content_type: str = "application/xml")) ->:
+async def xxe_test(url: str, target_id: int, content_type: str = "application/xml") -> dict:
     """Tests if XML parses handles external entities securely (XXE)."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -421,7 +421,7 @@ async def xxe_test(url: str, target_id: int, content_type: str = "application/xm
     }
 
 @mcp.tool()
-async def host_header_injection_test(url: str, target_id: int)) ->:
+async def host_header_injection_test(url: str, target_id: int) -> dict:
     """Tests if Host header injection can cause redirection or caching issues."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -458,7 +458,7 @@ async def host_header_injection_test(url: str, target_id: int)) ->:
     }
 
 @mcp.tool()
-async def crlf_injection_test(url: str, target_id: int, params: dict = None)) ->:
+async def crlf_injection_test(url: str, target_id: int, params: dict = None) -> dict:
     """Checks for CRLF injection leading to header injection or response splitting."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -503,7 +503,7 @@ async def crlf_injection_test(url: str, target_id: int, params: dict = None)) ->
     }
 
 @mcp.tool()
-async def nosql_injection_test(url: str, params: dict, target_id: int)) ->:
+async def nosql_injection_test(url: str, params: dict, target_id: int) -> dict:
     """Tests parameters for NoSQL (MongoDB) Injection."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}

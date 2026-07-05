@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def log_injection_test(url: str, target_id: int, params: dict = None)) ->:
+async def log_injection_test(url: str, target_id: int, params: dict = None) -> dict:
     """Checks for log injection by feeding CRLF characters in inputs."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -54,7 +54,7 @@ async def log_injection_test(url: str, target_id: int, params: dict = None)) ->:
     }
 
 @mcp.tool()
-async def error_disclosure_check(url: str, target_id: int, trigger_methods: list = None)) ->:
+async def error_disclosure_check(url: str, target_id: int, trigger_methods: list = None) -> dict:
     """Attempts to trigger errors on endpoint and check for details/stack trace disclosures."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -99,7 +99,7 @@ async def error_disclosure_check(url: str, target_id: int, trigger_methods: list
     }
 
 @mcp.tool()
-async def sensitive_data_in_logs_check(url: str, target_id: int)) ->:
+async def sensitive_data_in_logs_check(url: str, target_id: int) -> dict:
     """Verifies if query parameters transmit sensitive details which could end up in server logs."""
     sensitive_params = []
     vulnerable = False
@@ -129,7 +129,7 @@ async def sensitive_data_in_logs_check(url: str, target_id: int)) ->:
     }
 
 @mcp.tool()
-async def check_debug_endpoints(base_url: str, target_id: int)) ->:
+async def check_debug_endpoints(base_url: str, target_id: int) -> dict:
     """Checks for exposed logging, metric, and debug endpoints."""
     if not is_in_scope(target_id, base_url):
         return {"error": f"URL {base_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}

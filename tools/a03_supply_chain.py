@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def detect_vulnerable_js_libs(url: str, target_id: int)) ->:
+async def detect_vulnerable_js_libs(url: str, target_id: int) -> dict:
     """Fetch the page HTML, extract JS script URLs and check if they match known vulnerable versions."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -85,7 +85,7 @@ async def detect_vulnerable_js_libs(url: str, target_id: int)) ->:
     }
 
 @mcp.tool()
-async def check_package_json_exposure(base_url: str, target_id: int)) ->:
+async def check_package_json_exposure(base_url: str, target_id: int) -> dict:
     """Checks for exposed dependency files like package.json, composer.json, etc."""
     if not is_in_scope(target_id, base_url):
         return {"error": f"URL {base_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -137,7 +137,7 @@ async def check_package_json_exposure(base_url: str, target_id: int)) ->:
     }
 
 @mcp.tool()
-async def scan_github_secrets(target_id: int, repo_url: str = None, target_domain: str = None)) ->:
+async def scan_github_secrets(target_id: int, repo_url: str = None, target_domain: str = None) -> dict:
     """Check public github repository or search results for secrets using GITHUB_TOKEN."""
     github_token = os.getenv("GITHUB_TOKEN")
     secrets_found = []
@@ -203,7 +203,7 @@ async def scan_github_secrets(target_id: int, repo_url: str = None, target_domai
     }
 
 @mcp.tool()
-async def check_cdn_integrity(url: str, target_id: int)) ->:
+async def check_cdn_integrity(url: str, target_id: int) -> dict:
     """Verifies if CDN-delivered JS files are utilizing Subresource Integrity (SRI) checks."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -259,7 +259,7 @@ async def check_cdn_integrity(url: str, target_id: int)) ->:
     }
 
 @mcp.tool()
-async def check_dependency_confusion(domain: str, target_id: int)) ->:
+async def check_dependency_confusion(domain: str, target_id: int) -> dict:
     """Checks if internal package names are published on npm public registry."""
     # We query registry.npmjs.org for target packages to check if they are public.
     packages_checked = []

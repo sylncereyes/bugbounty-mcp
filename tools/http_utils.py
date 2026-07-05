@@ -1,20 +1,22 @@
 """
-AGY Bug Bounty MCP - Shared HTTP Client Utilities
+StealthVision-MCP - Shared HTTP Client Utilities
 All tool modules should use get_client() instead of creating their own httpx.AsyncClient.
 """
-import httpx
 import asyncio
+import ipaddress
 import logging
-import functools
+import socket
+import httpx
 from urllib.parse import urlparse
+from typing import Optional, Tuple
+
 from config import DEFAULT_TIMEOUT, USER_AGENT, VERIFY_SSL, REQUEST_DELAY, DRY_RUN
-from typing import Optional
-from tools.db import is_in_scope
+from tools.db import validate_scope_or_fail
 
-logger = logging.getLogger("agy")
+logger = logging.getLogger("stealthvision.http")
 
-# SSL disabled warning flag to avoid spamming logs
-_ssl_warning_printed = False
+# SSL disabled warning flag
+_SSL_WARNING_PRINTED = False
 
 # WAF block indicators
 WAF_BLOCK_INDICATORS = [
@@ -24,112 +26,84 @@ WAF_BLOCK_INDICATORS = [
     "suspicious activity", "automated request", "bot detection"
 ]
 
+# SSRF deny-list networks
+_DENIED_NETWORKS = [
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("169.254.0.0/16"),   # link-local / cloud metadata
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fe80::/10"),
+    ipaddress.ip_network("fc00::/7"),
+    ipaddress.ip_network("::ffff:0:0/96"),      # IPv4-mapped IPv6
+]
 
-def extract_domain(url: str) -> str:
-    """Extract domain from URL for rate limiting key."""
+
+class SSRFBlockedError(ValueError):
+    """Raised when target URL resolves to blocked private/internal range."""
+    pass
+
+
+class PinnedResolverTransport(httpx.AsyncHTTPTransport):
+    """
+    Transport that pins connections to a pre-validated IP address
+    while preserving the original hostname for TLS SNI and verification.
+    """
+    def __init__(self, pinned_ip: str, **kwargs):
+        super().__init__(**kwargs)
+        self._pinned_ip = pinned_ip
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        # Preserve original hostname from the request (might have been mutated before)
+        original_host = request.url.host
+        if not original_host:
+            # Fallback to the last known good hostname, if we have one
+            raise SSRFBlockedError("Cannot resolve target hostname.")
+
+        request.url = request.url.copy_with(host=self._pinned_ip)
+        request.headers["host"] = original_host
+        return await super().handle_async_request(request)
+
+
+async def _resolve_and_pin(hostname: str) -> Tuple[str, str]:
+    """
+    Resolve hostname asynchronously, validate against deny-list,
+    and return (original_hostname, pinned_ip_string).
+    
+    The pinned_ip is the FIRST non‑blocked IP (IPv4 preferred).
+    Raises SSRFBlockedError if resolution fails or all resolved IPs are blocked.
+    """
+    if not hostname:
+        raise SSRFBlockedError("No hostname provided")
+
+    loop = asyncio.get_running_loop()
     try:
-        parsed = urlparse(url)
-        hostname = parsed.hostname or ""
-        # Remove port if present
-        if ":" in hostname:
-            hostname = hostname.split(":")[0]
-        return hostname.lower()
-    except Exception:
-        # Fallback: return lowercase url
-        return url.lower()
-
-
-def validate_scope(url: str, target_id: int) -> None:
-    """Validate URL scope before making requests.
-    
-    Args:
-        url: Target URL to validate
-        target_id: REQUIRED target ID for scope checking
-    
-    Raises:
-        ValueError: If target_id is invalid or URL is not in scope
-    """
-    from tools.db import get_target
-    target = get_target(target_id)
-    if not target:
-        raise ValueError(
-            f"INVALID_TARGET: Target ID {target_id} does not exist in database. "
-            f"Use add_target() to create a target first."
+        addrs = await loop.getaddrinfo(
+            hostname, None, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM
         )
-    
-    if not is_in_scope(target_id, url):
-        raise ValueError(
-            f"OUT_OF_SCOPE: URL '{url}' is NOT authorized for target '{target.get('program_name', 'Unknown')}'. "
-            f"Declared scope: {target.get('scope', '[]')}. "
-            f"ALWAYS verify scope before running security tests. "
-            f"Update target scope via add_target() or remove target_id parameter."
-        )
+    except socket.gaierror as e:
+        raise SSRFBlockedError(f"DNS resolution failed for {hostname}: {e}")
 
+    pinned_ip = None
+    for family, socktype, proto, canonname, sockaddr in addrs:
+        raw_ip = sockaddr[0]
+        ip = ipaddress.ip_address(raw_ip)
 
-def with_scope_validation(func):
-    """Decorator to automatically validate scope before tool execution.
-    
-    Tools using this decorator will check if target_id is provided and 
-    validate the URL against declared scope before proceeding.
-    """
-    @functools.wraps(func)
-    async def wrapper(url: str = None, target_id: int = None, **kwargs):
-        if url and target_id is not None:
-            validate_scope(url, target_id)
-        return await func(url=url, target_id=target_id, **kwargs)
-    
-    # Also wrap sync functions
-    if not asyncio.iscoroutinefunction(func):
-        @functools.wraps(func)
-        def sync_wrapper(url: str = None, target_id: int = None, **kwargs):
-            if url and target_id is not None:
-                validate_scope(url, target_id)
-            return func(url=url, target_id=target_id, **kwargs)
-        return sync_wrapper
-    
-    return wrapper
+        # Handle IPv4-mapped IPv6 (::ffff:x.x.x.x)
+        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+            ip = ip.ipv4_mapped
 
-def _log_ssl_warning():
-    """Log a one-time warning when SSL verification is disabled."""
-    global _ssl_warning_printed
-    if not VERIFY_SSL and not _ssl_warning_printed:
-        logger.warning("[SECURITY] SSL certificate verification is DISABLED - requests are vulnerable to MITM attacks!")
-        logger.warning("[SECURITY] Set VERIFY_SSL=true in .env to enable SSL verification")
-        _ssl_warning_printed = True
+        if any(ip in net for net in _DENIED_NETWORKS):
+            continue   # skip blocked networks
 
+        if isinstance(ip, ipaddress.IPv4Address) or pinned_ip is None:
+            pinned_ip = ip
 
-def get_client(**kwargs) -> httpx.AsyncClient:
-    """Create a pre-configured httpx.AsyncClient with AGY defaults.
+    if pinned_ip is None:
+        raise SSRFBlockedError(f"{hostname} resolves ONLY to blocked ranges")
 
-    Defaults applied:
-    - timeout   -> from REQUEST_TIMEOUT env (default 30s)
-    - verify    -> from VERIFY_SSL env (default True)
-    - User-Agent-> from USER_AGENT env
-    - follow_redirects -> False (important for security testing)
-
-    Any kwarg can override the defaults.  Custom ``headers`` are *merged*
-    with the default User-Agent header rather than replacing it.
-    """
-    _log_ssl_warning()
-    defaults = {
-        "timeout": DEFAULT_TIMEOUT,
-        "verify": VERIFY_SSL,
-        "headers": {"User-Agent": USER_AGENT},
-        "follow_redirects": False,
-    }
-    # Merge headers so caller-supplied headers don't drop User-Agent
-    if "headers" in kwargs:
-        merged = defaults["headers"].copy()
-        merged.update(kwargs.pop("headers"))
-        defaults["headers"] = merged
-    defaults.update(kwargs)
-    return httpx.AsyncClient(**defaults)
-
-
-async def delay() -> None:
-    """Apply the configured inter-request delay (REQUEST_DELAY seconds)."""
-    if REQUEST_DELAY > 0:
-        await asyncio.sleep(REQUEST_DELAY)
+    return hostname, str(pinned_ip)
 
 
 async def secure_request(
@@ -140,227 +114,130 @@ async def secure_request(
     dry_run: bool = None,
     max_retries: int = 3,
     base_delay: float = 1.0,
-    **kwargs
+    follow_redirects: bool = False,
+    **kwargs,
 ) -> httpx.Response:
-    """Execute HTTP request with scope validation, backoff, and dry-run support.
-    
-    This is the preferred function for all security testing tools.
-    
-    Args:
-        client: httpx.AsyncClient instance
-        method: HTTP method (GET, POST, etc.)
-        url: Target URL
-        target_id: Target ID for scope validation (raises ValueError if out of scope)
-        dry_run: If True, return mock response without hitting target
-        max_retries: Maximum retry attempts (default 3)
-        base_delay: Base delay in seconds for exponential backoff (default 1.0)
-        **kwargs: Additional request arguments (params, json, headers, etc.)
-    
-    Returns:
-        httpx.Response object
-    
-    Raises:
-        ValueError: If target_id provided but URL is out of scope
-        Exception: On final failure after all retries
     """
-    # 1. Scope validation - FAIL if out of scope
-    validate_scope(url, target_id)
-    
-    # 2. Dry-run mode - return mock without hitting target
+    Execute HTTP request with SSRF protection (async DNS + transport pinning),
+    scope validation, and dry‑run support.
+    """
+    # 1. SSRF mitigation
+    hostname, pinned_ip = await _resolve_and_pin(urlparse(url).hostname)
+
+    # 2. Scope validation
+    validate_scope_or_fail(target_id, url)
+
+    # 3. Dry‑run
     if dry_run is None:
         dry_run = DRY_RUN
     if dry_run:
-        logger.info(f"[DRY RUN] Would send {method} request to {url} - skipping actual request")
+        logger.info(f"[DRY RUN] {method.upper()} {url} (pinned to {pinned_ip})")
         return httpx.Response(200, text="[DRY RUN] Request not executed", request=httpx.Request(method, url))
-    
-    # 3. Actual request with backoff
-    return await request_with_backoff(
-        client=client,
-        method=method,
-        url=url,
-        max_retries=max_retries,
-        base_delay=base_delay,
-        dry_run=False,  # Already handled above
-        **kwargs
-    )
+
+    # 4. Wrap client transport with pinned resolver
+    original_transport = client._transport
+    client._transport = PinnedResolverTransport(pinned_ip=pinned_ip)
+
+    try:
+        return await _request_with_backoff(
+            client=client,
+            method=method,
+            url=url,
+            max_retries=max_retries,
+            base_delay=base_delay,
+            follow_redirects=follow_redirects,
+            **kwargs,
+        )
+    finally:
+        client._transport = original_transport
 
 
-async def request_with_backoff(
+async def _request_with_backoff(
     client: httpx.AsyncClient,
     method: str,
     url: str,
+    max_retries: int,
+    base_delay: float,
+    follow_redirects: bool,
+    **kwargs,
+) -> httpx.Response:
+    attempt = 0
+    while True:
+        try:
+            # httpx correctly uses SNI from request.url.hostname, not the host header
+            return await client.request(
+                method,
+                url,
+                follow_redirects=follow_redirects,
+                **kwargs
+            )
+        except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+            if attempt >= max_retries:
+                raise
+            await asyncio.sleep(base_delay * (2 ** attempt))
+            attempt += 1
+
+
+def make_safe_request(
+    method: str,
+    url: str,
+    target_id: int,
+    client: Optional[httpx.AsyncClient] = None,
+    dry_run: bool = None,
     max_retries: int = 3,
     base_delay: float = 1.0,
-    dry_run: bool = None,
-    **kwargs
-) -> httpx.Response:
-    """Execute HTTP request with exponential backoff for rate limiting/WAF blocking.
-    
-    Args:
-        client: httpx.AsyncClient instance
-        method: HTTP method (GET, POST, etc.)
-        url: Target URL
-        max_retries: Maximum retry attempts (default 3)
-        base_delay: Base delay in seconds (default 1.0)
-        dry_run: If True, return mock response without actual request (default: DRY_RUN config)
-        **kwargs: Additional request arguments (params, json, headers, etc.)
-    
-    Returns:
-        httpx.Response object
-    
-    Raises:
-        Exception: On final failure after all retries
+    follow_redirects: bool = False,
+    **kwargs,
+):
     """
-    # Handle dry_run mode - return mock response without hitting target
-    if dry_run is None:
-        dry_run = DRY_RUN
-    if dry_run:
-        logger.info(f"[DRY RUN] Would send {method} request to {url} - skipping actual request")
-        return httpx.Response(200, text="[DRY RUN] Request not executed", request=httpx.Request(method, url))
-    
-    method_lower = method.lower()
-    request_func = getattr(client, method_lower)
-    
-    last_error: Exception = Exception("Max retries exceeded")
-    for attempt in range(max_retries):
+    High‑level helper for modules that need one‑off requests.
+    Reuses the provided client (if any) or creates a new one.
+    """
+    owns_client = client is None
+    if owns_client:
+        client = httpx.AsyncClient(
+            timeout=DEFAULT_TIMEOUT,
+            verify=VERIFY_SSL,
+            headers={"User-Agent": USER_AGENT},
+            follow_redirects=False,
+        )
+
+    async def _inner():
+        return await secure_request(
+            client=client,
+            method=method,
+            url=url,
+            target_id=target_id,
+            dry_run=dry_run,
+            max_retries=max_retries,
+            base_delay=base_delay,
+            follow_redirects=follow_redirects,
+            **kwargs,
+        )
+
+    async def _wrapped():
         try:
-            response = await request_func(url, **kwargs)
-            
-            # Check for rate limiting or WAF blocking
-            is_blocked = False
-            if response.status_code == 429:
-                is_blocked = True
-            elif response.status_code == 403:
-                body_lower = response.text.lower()
-                for indicator in WAF_BLOCK_INDICATORS:
-                    if indicator in body_lower:
-                        is_blocked = True
-                        break
-            
-            if is_blocked and attempt < max_retries - 1:
-                # exponential backoff with jitter: base_delay * 2^attempt + random
-                backoff_time = base_delay * (2 ** attempt)
-                logger.warning(
-                    f"[RATE LIMIT/WAF] Detected blocking on {url} - "
-                    f"Status: {response.status_code} - "
-                    f"Backing off for {backoff_time:.1f}s (attempt {attempt + 1}/{max_retries})"
-                )
-                await asyncio.sleep(backoff_time)
-                continue
-            
-            return response
-            
-        except Exception as e:
-            last_error = e
-            if attempt < max_retries - 1:
-                backoff_time = base_delay * (2 ** attempt)
-                logger.warning(f"[RETRY] Request failed, retrying in {backoff_time:.1f}s: {e}")
-                await asyncio.sleep(backoff_time)
-    
-    raise last_error
+            return await _inner()
+        finally:
+            if owns_client:
+                await client.aclose()
+
+    return _wrapped()
 
 
-import re
-import json
-from typing import Any, Dict, List, Union
-
-# Sensitive patterns to redact
-SENSITIVE_PATTERNS = [
-    # Bearer tokens
-    (re.compile(r'(Bearer\s+)([A-Za-z0-9\-._~+/]+=*)', re.IGNORECASE), r'\1[REDACTED]'),
-    # API keys in URLs/query params: api_key=..., key=..., token=..., secret=..., password=...
-    (re.compile(r'(?i)([?&](?:api[_-]?key|key|token|secret|password|access[_-]?token|auth[_-]?token)=)([^&\s]+)'), r'\1[REDACTED]'),
-    # API keys in headers: X-Api-Key, X-Auth-Token, Authorization, etc.
-    (re.compile(r'(?i)(["\']?(?:x[_-]?api[_-]?key|x[_-]?auth[_-]?token|authorization|api[_-]?key)["\']?\s*[:=]\s*["\']?)([A-Za-z0-9\-._~+/]+=*)', re.IGNORECASE), r'\1[REDACTED]'),
-    # AWS keys (AKIA...)
-    (re.compile(r'(AKIA[0-9A-Z]{16})'), r'[REDACTED_AWS_KEY]'),
-    # Generic long tokens (32+ chars alphanumeric)
-    (re.compile(r'(?i)(["\']?token["\']?\s*[:=]\s*["\'])([A-Za-z0-9\-._~+/]{32,})', re.IGNORECASE), r'\1[REDACTED]'),
-    # JWT tokens (three base64 parts separated by dots)
-    (re.compile(r'(eyJ[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+)'), r'[REDACTED_JWT]'),
-]
-
-
-def sanitize_output(data: Any) -> Any:
-    """
-    Recursively sanitize sensitive data from any structure (dict, list, str, etc.).
-    
-    This should be called before writing any output to files, logs, or reports.
-    
-    Args:
-        data: Any: The data to sanitize (dict, list, str, int, etc.)
-        
-    Returns:
-        Sanitized copy of the data with sensitive patterns redacted.
-    """
-    if isinstance(data, str):
-        result = data
-        for pattern, replacement in SENSITIVE_PATTERNS:
-            result = pattern.sub(replacement, result)
-        return result
-    
-    elif isinstance(data, dict):
-        return {key: sanitize_output(value) for key, value in data.items()}
-    
-    elif isinstance(data, (list, tuple)):
-        return [sanitize_output(item) for item in data]
-    
-    else:
-        # int, float, bool, None - return as-is
-        return data
-
-
-def sanitize_response(response: httpx.Response) -> httpx.Response:
-    """
-    Create a sanitized copy of an httpx.Response for logging/reporting.
-    Strips sensitive headers and redacts sensitive data in body.
-    """
-    # Headers to redact
-    sensitive_headers = {
-        'authorization', 'x-api-key', 'x-auth-token', 'api-key',
-        'cookie', 'set-cookie', 'x-csrf-token', 'x-xsrf-token'
+def get_client(**overrides) -> httpx.AsyncClient:
+    defaults = {
+        "timeout": DEFAULT_TIMEOUT,
+        "verify": VERIFY_SSL,
+        "headers": {"User-Agent": USER_AGENT},
+        "follow_redirects": False,
     }
-    
-    sanitized_headers = {}
-    for k, v in response.headers.items():
-        if k.lower() in sensitive_headers:
-            sanitized_headers[k] = '[REDACTED]'
-        else:
-            sanitized_headers[k] = v
-    
-    # Sanitize body
-    sanitized_text = sanitize_output(response.text)
-    
-    return httpx.Response(
-        status_code=response.status_code,
-        headers=sanitized_headers,
-        text=sanitized_text,
-        request=response.request,
-        extensions=response.extensions
-    )
+    if "headers" in overrides:
+        defaults["headers"].update(overrides.pop("headers"))
+    defaults.update(overrides)
+    return httpx.AsyncClient(**defaults)
 
 
-def tls_connect(hostname: str, port: int = 443, timeout: float = None):
-    """Create a TLS/SSL connection and return (version, cipher, cert) tuple.
-
-    This is a shared helper to avoid duplicating raw TLS socket logic
-    across tool modules (e.g. a02_misconfiguration and a04_cryptography).
-
-    Returns:
-        tuple: (protocol_version: str, cipher: tuple|None, cert: dict|None)
-
-    Raises:
-        Exception: Any connection or TLS negotiation error.
-    """
-    import ssl
-    import socket
-    _timeout = timeout or DEFAULT_TIMEOUT
-    # FIX BUG-MEDIUM-4: honour VERIFY_SSL config (previously always verified)
-    context = ssl.create_default_context()
-    if not VERIFY_SSL:
-        logger.warning(f"[SECURITY] TLS connection to {hostname}:{port} without cert verification!")
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
-    with socket.create_connection((hostname, port), timeout=_timeout) as sock:
-        with context.wrap_socket(sock, server_hostname=hostname) as ssock:
-            return ssock.version(), ssock.cipher(), ssock.getpeercert()
+async def delay() -> None:
+    if REQUEST_DELAY > 0:
+        await asyncio.sleep(REQUEST_DELAY)

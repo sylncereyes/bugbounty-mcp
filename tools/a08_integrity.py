@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def check_insecure_deserialization(url: str, target_id: int, params: dict = None)) ->:
+async def check_insecure_deserialization(url: str, target_id: int, params: dict = None) -> dict:
     """Checks parameters or cookies for signs of serialized objects (PHP, Python pickle, Java, etc.)."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -67,7 +67,7 @@ async def check_insecure_deserialization(url: str, target_id: int, params: dict 
     }
 
 @mcp.tool()
-async def cache_poisoning_test(url: str, target_id: int)) ->:
+async def cache_poisoning_test(url: str, target_id: int) -> dict:
     """Checks for cache poisoning potential via unkeyed header reflection."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -110,7 +110,7 @@ async def cache_poisoning_test(url: str, target_id: int)) ->:
     }
 
 @mcp.tool()
-async def parameter_tampering_test(url: str, params: dict, target_id: int, method: str = "GET")) ->:
+async def parameter_tampering_test(url: str, params: dict, target_id: int, method: str = "GET") -> dict:
     """Tampering with parameters (e.g. changing role, price, or ID) to check for server side validation."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -168,7 +168,7 @@ async def parameter_tampering_test(url: str, params: dict, target_id: int, metho
     }
 
 @mcp.tool()
-async def check_saml_vulnerabilities(url: str, target_id: int, saml_response: str = None)) ->:
+async def check_saml_vulnerabilities(url: str, target_id: int, saml_response: str = None) -> dict:
     """Performs integrity check on SAML assertion signatures for XML Signature Wrapping (XSW) or weak sigs."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -233,7 +233,7 @@ async def check_saml_vulnerabilities(url: str, target_id: int, saml_response: st
     }
 
 @mcp.tool()
-async def mass_assignment_test(url: str, target_id: int, method: str = "POST", data: dict = None, extra_fields: dict = None)) ->:
+async def mass_assignment_test(url: str, target_id: int, method: str = "POST", data: dict = None, extra_fields: dict = None) -> dict:
     """Checks if adding privileged attributes (like isAdmin, role) updates server data."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -283,7 +283,7 @@ async def mass_assignment_test(url: str, target_id: int, method: str = "POST", d
     }
 
 @mcp.tool()
-async def http_request_smuggling_check(url: str, target_id: int)) ->:
+async def http_request_smuggling_check(url: str, target_id: int) -> dict:
     """Probes for HTTP request smuggling indicators via conflicting headers.
     
     LIMITATION: This test uses httpx which normalizes HTTP headers. True CL.TE/TE.CL

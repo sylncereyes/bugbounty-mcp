@@ -13,7 +13,7 @@ from tools.http_utils import secure_request, get_client
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def jwt_analyze(token: str, target_id: int)) ->:
+async def jwt_analyze(token: str, target_id: int) -> dict:
     """Decodes a JWT without verification, analyzing its header and payload for security weaknesses."""
     parts = token.split(".")
     if len(parts) != 3:
@@ -83,7 +83,7 @@ async def jwt_analyze(token: str, target_id: int)) ->:
     }
 
 @mcp.tool()
-async def ssl_cipher_check(hostname: str, target_id: int, port: int = 443)) ->:
+async def ssl_cipher_check(hostname: str, target_id: int, port: int = 443) -> dict:
     """Checks for weak SSL/TLS cipher suites (compatibility wrapper)."""
     # Simply delegates or matches local check
     from tools.http_utils import secure_request, tls_connect
@@ -124,7 +124,7 @@ async def ssl_cipher_check(hostname: str, target_id: int, port: int = 443)) ->:
     }
 
 @mcp.tool()
-async def detect_weak_hashing(target_id: int, url: str = None, hash_value: str = None)) ->:
+async def detect_weak_hashing(target_id: int, url: str = None, hash_value: str = None) -> dict:
     """Analyzes a hash value or pages for weak hashes like MD5 or SHA1."""
     recommendations = []
     is_weak = False
@@ -161,7 +161,7 @@ async def detect_weak_hashing(target_id: int, url: str = None, hash_value: str =
     }
 
 @mcp.tool()
-async def check_https_redirect(url: str, target_id: int)) ->:
+async def check_https_redirect(url: str, target_id: int) -> dict:
     """Checks if HTTP requests automatically redirect to HTTPS, and verifies HSTS."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -228,7 +228,7 @@ async def check_https_redirect(url: str, target_id: int)) ->:
     }
 
 @mcp.tool()
-async def check_sensitive_data_exposure(url: str, target_id: int)) ->:
+async def check_sensitive_data_exposure(url: str, target_id: int) -> dict:
     """Scans response bodies for accidentally exposed sensitive information."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -277,7 +277,7 @@ async def check_sensitive_data_exposure(url: str, target_id: int)) ->:
     }
 
 @mcp.tool()
-async def padding_oracle_check(url: str, encrypted_param: str, param_name: str, target_id: int)) ->:
+async def padding_oracle_check(url: str, encrypted_param: str, param_name: str, target_id: int) -> dict:
     """Checks for Padding Oracle vulnerability by measuring timing/response variance on parameter modifications."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}

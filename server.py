@@ -62,6 +62,7 @@ class SSEAuthMiddleware(BaseHTTPMiddleware):
 
 # ─── Import all tool modules (each registers their tools via @mcp.tool()) ───────
 _TOOL_MODULES = [
+    # OWASP Top 10 2021 - Live Active Testing Tools
     "tools.a01_access_control",
     "tools.a02_misconfiguration",
     "tools.a03_supply_chain",
@@ -72,6 +73,7 @@ _TOOL_MODULES = [
     "tools.a08_integrity",
     "tools.a09_logging",
     "tools.a10_exceptions",
+    # Core functionality
     "tools.recon",
     "tools.reporting",
     "tools.intelligence",
@@ -94,6 +96,7 @@ _TOOL_MODULES = [
     "tools.portswigger_notes_kb",
     "tools.rfc_kb",
     "tools.rag_engine",
+    # Static knowledge / cheatsheets
     "tools.api_testing",
     "tools.cloud_testing",
     "tools.git_testing",
@@ -109,18 +112,7 @@ _TOOL_MODULES = [
     "tools.csti_chains",
     "tools.waf_bypass",
     "tools.graphql_introspect",
-    "tools.ad_enumeration",
-    "tools.internal_pivot",
-    "tools.priv_esc",
-    "tools.crypto_solver",
-    "tools.stego_helper",
-    "tools.forensics_extract",
-    "tools.binary_analyzer",
-    "tools.hunter_workflow",
-    "tools.kerberos_attacks",
     "tools.nmap_scanner",
-    "tools.credential_dumper",
-    "tools.smb_pwn",
     "tools.rate_limit_bypass",
     "tools.browser_analysis",
     "tools.external_tools",
@@ -169,7 +161,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    print(f"[StealthVision] Loaded {len(_loaded)}/62 tool modules", file=sys.stderr)
+    print(f"[StealthVision] Loaded {len(_loaded)}/{len(_TOOL_MODULES)} tool modules", file=sys.stderr)
     if _failed:
         for mod, err in _failed:
             print(f"[StealthVision] FAILED: {mod} - {err}", file=sys.stderr)
@@ -179,7 +171,7 @@ if __name__ == "__main__":
         print(
             f"[StealthVision] Universal Bug Bounty System Prompt ACTIVE "
             f"({len(_SYSTEM_PROMPT):,} chars) -- "
-            "all connected MCP clients will adopt the **StealthVision** persona.",
+            "all connected MCP clients will adopt the StealthVision persona.",
             file=sys.stderr,
         )
     else:

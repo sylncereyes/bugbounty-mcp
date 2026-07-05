@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def brute_force_protection_check(login_url: str, target_id: int, username_field: str = "username", password_field: str = "password", test_username: str = "admin")) ->:
+async def brute_force_protection_check(login_url: str, target_id: int, username_field: str = "username", password_field: str = "password", test_username: str = "admin") -> dict:
     """Verifies brute force protections by sending several failed requests to login endpoint."""
     if not is_in_scope(target_id, login_url):
         return {"error": f"URL {login_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -51,7 +51,7 @@ async def brute_force_protection_check(login_url: str, target_id: int, username_
     }
 
 @mcp.tool()
-async def credential_stuffing_simulation(login_url: str, target_id: int, username_field: str = "username", password_field: str = "password", credentials: list = None)) ->:
+async def credential_stuffing_simulation(login_url: str, target_id: int, username_field: str = "username", password_field: str = "password", credentials: list = None) -> dict:
     """Simulates credential stuffing attempts against a target login endpoint."""
     if not is_in_scope(target_id, login_url):
         return {"error": f"URL {login_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -99,7 +99,7 @@ async def credential_stuffing_simulation(login_url: str, target_id: int, usernam
     }
 
 @mcp.tool()
-async def session_management_check(url: str, target_id: int, login_url: str = None, username: str = None, password: str = None)) ->:
+async def session_management_check(url: str, target_id: int, login_url: str = None, username: str = None, password: str = None) -> dict:
     """Performs session checks: Secure, HttpOnly, and lifecycle invalidation checks."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -146,7 +146,7 @@ async def session_management_check(url: str, target_id: int, login_url: str = No
     }
 
 @mcp.tool()
-async def jwt_attack_test(url: str, token: str, target_id: int)) ->:
+async def jwt_attack_test(url: str, token: str, target_id: int) -> dict:
     """Verifies authentication bypass by rewriting token to alg:none or using weak keys."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -203,7 +203,7 @@ async def jwt_attack_test(url: str, token: str, target_id: int)) ->:
     }
 
 @mcp.tool()
-async def password_reset_test(reset_url: str, target_id: int, email: str = "test@example.com")) ->:
+async def password_reset_test(reset_url: str, target_id: int, email: str = "test@example.com") -> dict:
     """Verifies reset password links against host header injection and token predictability."""
     if not is_in_scope(target_id, reset_url):
         return {"error": f"URL {reset_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -243,7 +243,7 @@ async def password_reset_test(reset_url: str, target_id: int, email: str = "test
     }
 
 @mcp.tool()
-async def oauth_misconfiguration_check(authorization_url: str, target_id: int, client_id: str = None, redirect_uri: str = None)) ->:
+async def oauth_misconfiguration_check(authorization_url: str, target_id: int, client_id: str = None, redirect_uri: str = None) -> dict:
     """Checks for typical OAuth vulnerabilities like missing state params or open redirect URLs."""
     if not is_in_scope(target_id, authorization_url):
         return {"error": f"URL {authorization_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
@@ -287,7 +287,7 @@ async def oauth_misconfiguration_check(authorization_url: str, target_id: int, c
     }
 
 @mcp.tool()
-async def check_plaintext_credentials(url: str, target_id: int)) ->:
+async def check_plaintext_credentials(url: str, target_id: int) -> dict:
     """Checks if login endpoint accepts authentication data via unencrypted HTTP."""
     if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
