@@ -6,9 +6,9 @@ import logging
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def error_handling_analysis(url: str, target_id: int = None) -> dict:
+async def error_handling_analysis(url: str, target_id: int)) ->:
     """Sends invalid input structures to check if exception details are handled gracefully or verbose details leakage occurs."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     invalid_inputs = [
         {"id": "A" * 5000},
@@ -56,9 +56,9 @@ async def error_handling_analysis(url: str, target_id: int = None) -> dict:
     }
 
 @mcp.tool()
-async def timing_attack_check(url: str, params: dict, valid_value: str, invalid_value: str, param_name: str, target_id: int = None) -> dict:
+async def timing_attack_check(url: str, params: dict, valid_value: str, invalid_value: str, param_name: str, target_id: int)) ->:
     """Measures response delay differences when sending valid vs invalid inputs to check for timing leaks."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     valid_times = []
     invalid_times = []
@@ -118,9 +118,9 @@ async def timing_attack_check(url: str, params: dict, valid_value: str, invalid_
     }
 
 @mcp.tool()
-async def check_fail_open(url: str, auth_data: dict, target_id: int = None) -> dict:
+async def check_fail_open(url: str, auth_data: dict, target_id: int)) ->:
     """Attempts login authentication by forcing malformed payload configurations (null/empty values) to check for fail-open authorization logic."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     vulnerable = False
     status_code = None
@@ -159,7 +159,7 @@ async def check_fail_open(url: str, auth_data: dict, target_id: int = None) -> d
     }
 
 @mcp.tool()
-async def exception_information_disclosure(url: str, target_id: int = None) -> dict:
+async def exception_information_disclosure(url: str, target_id: int)) ->:
     """Checks for verbose system framework information leaking out in exceptions."""
     # Simply calls error_handling_analysis
     res = await error_handling_analysis(url, target_id)

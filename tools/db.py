@@ -278,7 +278,7 @@ def save_finding(
 
 
 def get_findings(
-    target_id: int = None,
+    target_id: int,
     severity: str = None,
     status: str = None,
     owasp_category: str = None,
@@ -324,7 +324,7 @@ def update_finding_status(finding_id: int, status: str) -> bool:
         return affected > 0
 
 
-def get_finding_stats(target_id: int = None) -> Dict:
+def get_finding_stats(target_id: int) -> Dict:
     """Get finding statistics grouped by severity."""
     with db_connection() as conn:
         query = "SELECT severity, COUNT(*) as count FROM findings WHERE 1=1"
@@ -397,7 +397,7 @@ def log_scan(
     scan_type: str,
     target_url: str,
     result_summary: str,
-    target_id: int = None,
+    target_id: int,
     findings_count: int = 0,
 ) -> int:
     with db_connection() as conn:

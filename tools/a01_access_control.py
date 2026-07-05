@@ -8,11 +8,11 @@ import logging
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def idor_test(url: str, id_param: str, test_ids: list, method: str = "GET", headers: dict = None, cookies: str = None, target_id: int = None) -> dict:
+async def idor_test(url: str, id_param: str, test_ids: list, target_id: int, method: str = "GET", headers: dict = None, cookies: str = None) -> dict:
     """
     Tests IDOR by cycling through test_ids, replacing {id} in URL or appending as param.
     """
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     if headers is None:
         headers = {}
@@ -81,7 +81,7 @@ async def idor_test(url: str, id_param: str, test_ids: list, method: str = "GET"
                     "suspicious": False
                 })
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title=f"Potential IDOR on parameter {id_param}",
@@ -101,11 +101,11 @@ async def idor_test(url: str, id_param: str, test_ids: list, method: str = "GET"
     }
 
 @mcp.tool()
-async def cors_misconfiguration_check(url: str, target_id: int = None) -> dict:
+async def cors_misconfiguration_check(url: str, target_id: int) ->:
     """
     Tests CORS configuration by sending requests with custom Origin headers.
     """
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     test_origins = ["http://evil.com", "null", "http://localhost"]
     findings = []
@@ -138,7 +138,7 @@ async def cors_misconfiguration_check(url: str, target_id: int = None) -> dict:
             except Exception as e:
                 logger.debug("CORS check failed for origin %s: %s", origin, e)
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="CORS Misconfiguration",
@@ -157,11 +157,11 @@ async def cors_misconfiguration_check(url: str, target_id: int = None) -> dict:
     }
 
 @mcp.tool()
-async def path_traversal_test(url: str, param: str, target_id: int = None) -> dict:
+async def path_traversal_test(url: str, param: str, target_id: int) ->:
     """
     Tests for path traversal vulnerabilities by injecting common payloads.
     """
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     payloads = [
         "../../../../etc/passwd",
@@ -184,7 +184,7 @@ async def path_traversal_test(url: str, param: str, target_id: int = None) -> di
             except Exception as e:
                 logger.debug("Path traversal request failed: %s", e)
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Path Traversal Vulnerability",
@@ -206,11 +206,11 @@ async def path_traversal_test(url: str, param: str, target_id: int = None) -> di
     }
 
 @mcp.tool()
-async def http_methods_check(url: str, target_id: int = None) -> dict:
+async def http_methods_check(url: str, target_id: int) ->:
     """
     Checks what HTTP methods are supported by the target endpoint.
     """
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     methods = ["OPTIONS", "TRACE", "PUT", "DELETE", "PATCH", "HEAD"]
     allowed = []
@@ -230,7 +230,7 @@ async def http_methods_check(url: str, target_id: int = None) -> dict:
             except Exception as e:
                 logger.debug("HTTP method %s check failed: %s", m, e)
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title=f"Insecure HTTP Method Allowed: {','.join(dangerous)}",
@@ -249,11 +249,11 @@ async def http_methods_check(url: str, target_id: int = None) -> dict:
     }
 
 @mcp.tool()
-async def forced_browsing_scan(base_url: str, wordlist_type: str = "common", target_id: int = None) -> dict:
+async def forced_browsing_scan(base_url: str, target_id: int, wordlist_type: str = "common") ->:
     """
     Scans for predictable resource locations. Wordlist types: common, admin, backup, api.
     """
-    if target_id is not None and not is_in_scope(target_id, base_url):
+    if not is_in_scope(target_id, base_url):
         return {"error": f"URL {base_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     wordlists = {
         "common": ["/admin", "/dashboard", "/api/v1", "/swagger", "/metrics", "/health", "/console"],
@@ -284,7 +284,7 @@ async def forced_browsing_scan(base_url: str, wordlist_type: str = "common", tar
             except Exception as e:
                 logger.debug("Forced browsing request failed for %s: %s", p, e)
 
-    if interesting and target_id is not None:
+    if interesting:
         save_finding(
             target_id=target_id,
             title="Exposed files or sensitive endpoints",
@@ -303,11 +303,11 @@ async def forced_browsing_scan(base_url: str, wordlist_type: str = "common", tar
     }
 
 @mcp.tool()
-async def access_control_bypass_test(url: str, bypass_header: str = None, target_id: int = None) -> dict:
+async def access_control_bypass_test(url: str, target_id: int, bypass_header: str = None) ->:
     """
     Tests if access control can be bypassed using headers like X-Original-URL.
     """
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     headers_to_test = {
         "X-Original-URL": "/admin",
@@ -345,7 +345,7 @@ async def access_control_bypass_test(url: str, bypass_header: str = None, target
             except Exception as e:
                 logger.debug("Access control bypass request failed: %s", e)
 
-    if bypassed and target_id is not None:
+    if bypassed:
         save_finding(
             target_id=target_id,
             title="Access Control Bypass via Headers",
@@ -364,11 +364,11 @@ async def access_control_bypass_test(url: str, bypass_header: str = None, target
     }
 
 @mcp.tool()
-async def privilege_escalation_test(url: str, low_priv_cookie: str, high_priv_endpoint: str, target_id: int = None) -> dict:
+async def privilege_escalation_test(url: str, low_priv_cookie: str, high_priv_endpoint: str, target_id: int) ->:
     """
     Checks if high-privilege endpoints can be accessed with low-privilege cookies.
     """
-    if target_id is not None and not is_in_scope(target_id, high_priv_endpoint):
+    if not is_in_scope(target_id, high_priv_endpoint):
         return {"error": f"URL {high_priv_endpoint} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     headers = {
         "Cookie": low_priv_cookie
@@ -395,7 +395,7 @@ async def privilege_escalation_test(url: str, low_priv_cookie: str, high_priv_en
         except Exception as e:
             logger.debug("Privilege escalation request failed: %s", e)
 
-    if escalated and target_id is not None:
+    if escalated:
         save_finding(
             target_id=target_id,
             title="Privilege Escalation Vulnerability",

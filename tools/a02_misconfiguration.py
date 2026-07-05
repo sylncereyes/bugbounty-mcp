@@ -8,9 +8,9 @@ import logging
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def security_headers_check(url: str, target_id: int = None) -> dict:
+async def security_headers_check(url: str, target_id: int)) ->:
     """Check for missing/misconfigured security headers."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
 
     headers_to_check = {
@@ -53,7 +53,7 @@ async def security_headers_check(url: str, target_id: int = None) -> dict:
     if powered_by:
         disclosure.append(f"X-Powered-By: {powered_by}")
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Missing Security Headers",
@@ -74,10 +74,10 @@ async def security_headers_check(url: str, target_id: int = None) -> dict:
     }
 
 @mcp.tool()
-async def tls_ssl_check(hostname: str, port: int = 443, target_id: int = None) -> dict:
+async def tls_ssl_check(hostname: str, target_id: int, port: int = 443)) ->:
     """Analyze TLS/SSL settings for weaknesses."""
     # FIX BUG-MEDIUM-2: tambah scope check yang sebelumnya hilang
-    if target_id is not None and not is_in_scope(target_id, f"https://{hostname}:{port}"):
+    if not is_in_scope(target_id, f"https://{hostname}:{port}"):
         return {"error": f"Host {hostname} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
 
     issues = []
@@ -105,7 +105,7 @@ async def tls_ssl_check(hostname: str, port: int = 443, target_id: int = None) -
         issues.append(f"TLS connection failed/untrusted certificate: {str(e)}")
         vulnerable = True
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Weak TLS/SSL Configuration",
@@ -125,9 +125,9 @@ async def tls_ssl_check(hostname: str, port: int = 443, target_id: int = None) -
     }
 
 @mcp.tool()
-async def exposed_files_check(base_url: str, target_id: int = None) -> dict:
+async def exposed_files_check(base_url: str, target_id: int)) ->:
     """Checks for exposed configuration files and sensitive directories."""
-    if target_id is not None and not is_in_scope(target_id, base_url):
+    if not is_in_scope(target_id, base_url):
         return {"error": f"URL {base_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
 
     files = [
@@ -163,7 +163,7 @@ async def exposed_files_check(base_url: str, target_id: int = None) -> dict:
     critical_count = sum(1 for e in exposed if e["sensitive"])
     vulnerable = len(exposed) > 0
     
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Exposed Sensitive Files",
@@ -182,9 +182,9 @@ async def exposed_files_check(base_url: str, target_id: int = None) -> dict:
     }
 
 @mcp.tool()
-async def cookie_security_check(url: str, target_id: int = None) -> dict:
+async def cookie_security_check(url: str, target_id: int)) ->:
     """Checks Set-Cookie headers for missing Secure, HttpOnly, and SameSite flags."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
 
     cookies_issues = []
@@ -215,7 +215,7 @@ async def cookie_security_check(url: str, target_id: int = None) -> dict:
                 "raw": cookie_str
             })
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Insecure Cookie Attributes",
@@ -233,9 +233,9 @@ async def cookie_security_check(url: str, target_id: int = None) -> dict:
     }
 
 @mcp.tool()
-async def directory_listing_check(url: str, paths: list = None, target_id: int = None) -> dict:
+async def directory_listing_check(url: str, target_id: int, paths: list = None)) ->:
     """Checks if directory listing (indexing) is enabled on common paths."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
 
     if not paths:
@@ -257,7 +257,7 @@ async def directory_listing_check(url: str, paths: list = None, target_id: int =
             except Exception as e:
                 logger.debug("Directory listing check failed for %s: %s", p, e)
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Directory Listing Enabled",
@@ -276,9 +276,9 @@ async def directory_listing_check(url: str, paths: list = None, target_id: int =
     }
 
 @mcp.tool()
-async def default_credentials_check(url: str, service_type: str = "web", target_id: int = None) -> dict:
+async def default_credentials_check(url: str, target_id: int, service_type: str = "web")) ->:
     """Checks for default credentials on administrative panels."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
 
     creds = {
@@ -305,7 +305,7 @@ async def default_credentials_check(url: str, service_type: str = "web", target_
             except Exception as e:
                 logger.debug("Default credentials check failed: %s", e)
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Default Credentials Vulnerability",
@@ -324,7 +324,7 @@ async def default_credentials_check(url: str, service_type: str = "web", target_
     }
 
 @mcp.tool()
-async def subdomain_takeover_check(domain: str, target_id: int = None) -> dict:
+async def subdomain_takeover_check(domain: str, target_id: int)) ->:
     """Checks for potential subdomain takeover via dangling CNAME pointers."""
     takeover_fingerprints = {
         "GitHub Pages": "There isn't a GitHub Pages site here",
@@ -369,7 +369,7 @@ async def subdomain_takeover_check(domain: str, target_id: int = None) -> dict:
             except Exception as e:
                 logger.debug("Subdomain takeover check failed for %s: %s", domain, e)
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Potential Subdomain Takeover",
@@ -388,9 +388,9 @@ async def subdomain_takeover_check(domain: str, target_id: int = None) -> dict:
     }
 
 @mcp.tool()
-async def admin_panel_discovery(base_url: str, target_id: int = None) -> dict:
+async def admin_panel_discovery(base_url: str, target_id: int)) ->:
     """Scans for administrative control panels."""
-    if target_id is not None and not is_in_scope(target_id, base_url):
+    if not is_in_scope(target_id, base_url):
         return {"error": f"URL {base_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
 
     admin_paths = [
@@ -416,7 +416,7 @@ async def admin_panel_discovery(base_url: str, target_id: int = None) -> dict:
                 logger.debug("Admin panel check failed for %s: %s", path, e)
 
     vulnerable = len(found) > 0
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Exposed Admin Panel",

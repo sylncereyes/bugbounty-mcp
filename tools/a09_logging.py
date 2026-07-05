@@ -6,9 +6,9 @@ import logging
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def log_injection_test(url: str, params: dict = None, target_id: int = None) -> dict:
+async def log_injection_test(url: str, target_id: int, params: dict = None)) ->:
     """Checks for log injection by feeding CRLF characters in inputs."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     payloads = [
         "admin\r\nINFO: Successful login",
@@ -54,9 +54,9 @@ async def log_injection_test(url: str, params: dict = None, target_id: int = Non
     }
 
 @mcp.tool()
-async def error_disclosure_check(url: str, trigger_methods: list = None, target_id: int = None) -> dict:
+async def error_disclosure_check(url: str, target_id: int, trigger_methods: list = None)) ->:
     """Attempts to trigger errors on endpoint and check for details/stack trace disclosures."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     vulnerable = False
     info_types = []
@@ -99,7 +99,7 @@ async def error_disclosure_check(url: str, trigger_methods: list = None, target_
     }
 
 @mcp.tool()
-async def sensitive_data_in_logs_check(url: str, target_id: int = None) -> dict:
+async def sensitive_data_in_logs_check(url: str, target_id: int)) ->:
     """Verifies if query parameters transmit sensitive details which could end up in server logs."""
     sensitive_params = []
     vulnerable = False
@@ -129,9 +129,9 @@ async def sensitive_data_in_logs_check(url: str, target_id: int = None) -> dict:
     }
 
 @mcp.tool()
-async def check_debug_endpoints(base_url: str, target_id: int = None) -> dict:
+async def check_debug_endpoints(base_url: str, target_id: int)) ->:
     """Checks for exposed logging, metric, and debug endpoints."""
-    if target_id is not None and not is_in_scope(target_id, base_url):
+    if not is_in_scope(target_id, base_url):
         return {"error": f"URL {base_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     endpoints = [
         "/actuator", "/actuator/env", "/actuator/heapdump", "/debug",

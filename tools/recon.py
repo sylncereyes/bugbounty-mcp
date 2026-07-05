@@ -35,7 +35,7 @@ def delete_target(target_id: int) -> dict:
     return {"status": "success" if success else "failed", "target_id": target_id}
 
 @mcp.tool()
-def list_findings(target_id: int = None, severity: str = None, status: str = None, owasp_category: str = None) -> list:
+def list_findings(target_id: int, severity: str = None, status: str = None, owasp_category: str = None) -> list:
     """Queries vulnerability findings with optional filters."""
     return db_get_findings(target_id, severity, status, owasp_category)
 
@@ -105,10 +105,10 @@ async def _recon_domain_impl(domain: str) -> dict:
     }
 
 @mcp.tool()
-async def recon_domain(domain: str, target_id: int = None) -> dict:
+async def recon_domain(domain: str, target_id: int) -> dict:
     """Performs DNS probes and basic WHOIS lookup on target domain."""
     # FIX MINOR-3: target_id was previously ignored — add optional scope guard
-    if target_id is not None:
+    if True:
         from tools.db import is_in_scope
         if not is_in_scope(target_id, f"https://{domain}"):
             return {"error": f"Domain {domain} is out of scope for target {target_id}. Scan aborted."}

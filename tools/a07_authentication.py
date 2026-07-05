@@ -5,9 +5,9 @@ import logging
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def brute_force_protection_check(login_url: str, username_field: str = "username", password_field: str = "password", test_username: str = "admin", target_id: int = None) -> dict:
+async def brute_force_protection_check(login_url: str, target_id: int, username_field: str = "username", password_field: str = "password", test_username: str = "admin")) ->:
     """Verifies brute force protections by sending several failed requests to login endpoint."""
-    if target_id is not None and not is_in_scope(target_id, login_url):
+    if not is_in_scope(target_id, login_url):
         return {"error": f"URL {login_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     status_codes = []
     vulnerable = True
@@ -31,7 +31,7 @@ async def brute_force_protection_check(login_url: str, username_field: str = "us
                 status_codes.append(999)
             await delay()
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Missing Login Brute Force Protection",
@@ -51,9 +51,9 @@ async def brute_force_protection_check(login_url: str, username_field: str = "us
     }
 
 @mcp.tool()
-async def credential_stuffing_simulation(login_url: str, username_field: str = "username", password_field: str = "password", credentials: list = None, target_id: int = None) -> dict:
+async def credential_stuffing_simulation(login_url: str, target_id: int, username_field: str = "username", password_field: str = "password", credentials: list = None)) ->:
     """Simulates credential stuffing attempts against a target login endpoint."""
-    if target_id is not None and not is_in_scope(target_id, login_url):
+    if not is_in_scope(target_id, login_url):
         return {"error": f"URL {login_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     if not credentials:
         credentials = [
@@ -79,7 +79,7 @@ async def credential_stuffing_simulation(login_url: str, username_field: str = "
             await delay()
                 
     vulnerable = len(valid_creds) > 0
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Valid Credentials Discovered via Stuffing",
@@ -99,9 +99,9 @@ async def credential_stuffing_simulation(login_url: str, username_field: str = "
     }
 
 @mcp.tool()
-async def session_management_check(url: str, login_url: str = None, username: str = None, password: str = None, target_id: int = None) -> dict:
+async def session_management_check(url: str, target_id: int, login_url: str = None, username: str = None, password: str = None)) ->:
     """Performs session checks: Secure, HttpOnly, and lifecycle invalidation checks."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     # Analyze cookie parameters
     issues = []
@@ -123,7 +123,7 @@ async def session_management_check(url: str, login_url: str = None, username: st
             logger.debug("Session management check failed: %s", e)
 
     vulnerable = len(issues) > 0
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Insecure Session Cookie Flags",
@@ -146,9 +146,9 @@ async def session_management_check(url: str, login_url: str = None, username: st
     }
 
 @mcp.tool()
-async def jwt_attack_test(url: str, token: str, target_id: int = None) -> dict:
+async def jwt_attack_test(url: str, token: str, target_id: int)) ->:
     """Verifies authentication bypass by rewriting token to alg:none or using weak keys."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     # Split token
     parts = token.split(".")
@@ -181,7 +181,7 @@ async def jwt_attack_test(url: str, token: str, target_id: int = None) -> dict:
             logger.debug("JWT attack test failed: %s", e)
             
     vulnerable = none_bypass
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Authentication Bypass via alg:none JWT",
@@ -203,9 +203,9 @@ async def jwt_attack_test(url: str, token: str, target_id: int = None) -> dict:
     }
 
 @mcp.tool()
-async def password_reset_test(reset_url: str, email: str = "test@example.com", target_id: int = None) -> dict:
+async def password_reset_test(reset_url: str, target_id: int, email: str = "test@example.com")) ->:
     """Verifies reset password links against host header injection and token predictability."""
-    if target_id is not None and not is_in_scope(target_id, reset_url):
+    if not is_in_scope(target_id, reset_url):
         return {"error": f"URL {reset_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     # Test host header injection in password reset flow
     injected = False
@@ -223,7 +223,7 @@ async def password_reset_test(reset_url: str, email: str = "test@example.com", t
         except Exception as e:
             logger.debug("Password reset test failed: %s", e)
             
-    if injected and target_id is not None:
+    if injected:
         save_finding(
             target_id=target_id,
             title="Host Header Injection in Password Reset",
@@ -243,9 +243,9 @@ async def password_reset_test(reset_url: str, email: str = "test@example.com", t
     }
 
 @mcp.tool()
-async def oauth_misconfiguration_check(authorization_url: str, client_id: str = None, redirect_uri: str = None, target_id: int = None) -> dict:
+async def oauth_misconfiguration_check(authorization_url: str, target_id: int, client_id: str = None, redirect_uri: str = None)) ->:
     """Checks for typical OAuth vulnerabilities like missing state params or open redirect URLs."""
-    if target_id is not None and not is_in_scope(target_id, authorization_url):
+    if not is_in_scope(target_id, authorization_url):
         return {"error": f"URL {authorization_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     issues = []
     
@@ -266,7 +266,7 @@ async def oauth_misconfiguration_check(authorization_url: str, client_id: str = 
                 logger.debug("OAuth redirect URI check failed: %s", e)
                 
     vulnerable = len(issues) > 0
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="OAuth Misconfiguration",
@@ -287,9 +287,9 @@ async def oauth_misconfiguration_check(authorization_url: str, client_id: str = 
     }
 
 @mcp.tool()
-async def check_plaintext_credentials(url: str, target_id: int = None) -> dict:
+async def check_plaintext_credentials(url: str, target_id: int)) ->:
     """Checks if login endpoint accepts authentication data via unencrypted HTTP."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     over_http = url.startswith("http://")
     basic_auth = False
@@ -305,7 +305,7 @@ async def check_plaintext_credentials(url: str, target_id: int = None) -> dict:
             logger.debug("Plaintext credentials check failed: %s", e)
             
     vulnerable = over_http or basic_auth
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Plaintext Credentials Transmission",

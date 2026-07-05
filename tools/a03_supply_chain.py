@@ -9,9 +9,9 @@ import logging
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def detect_vulnerable_js_libs(url: str, target_id: int = None) -> dict:
+async def detect_vulnerable_js_libs(url: str, target_id: int)) ->:
     """Fetch the page HTML, extract JS script URLs and check if they match known vulnerable versions."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     libs_found = []
     vulnerable_count = 0
@@ -66,7 +66,7 @@ async def detect_vulnerable_js_libs(url: str, target_id: int = None) -> dict:
                     })
 
     vulnerable = vulnerable_count > 0
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Outdated Vulnerable JavaScript Library",
@@ -85,9 +85,9 @@ async def detect_vulnerable_js_libs(url: str, target_id: int = None) -> dict:
     }
 
 @mcp.tool()
-async def check_package_json_exposure(base_url: str, target_id: int = None) -> dict:
+async def check_package_json_exposure(base_url: str, target_id: int)) ->:
     """Checks for exposed dependency files like package.json, composer.json, etc."""
-    if target_id is not None and not is_in_scope(target_id, base_url):
+    if not is_in_scope(target_id, base_url):
         return {"error": f"URL {base_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     files = ["/package.json", "/composer.json", "/requirements.txt", "/package-lock.json"]
     exposed_files = []
@@ -118,7 +118,7 @@ async def check_package_json_exposure(base_url: str, target_id: int = None) -> d
                 logger.debug("Package file check failed for %s: %s", f, e)
                 
     vulnerable = len(exposed_files) > 0 or len(vulnerable_packages) > 0
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Exposed Dependency Files (Supply Chain)",
@@ -137,7 +137,7 @@ async def check_package_json_exposure(base_url: str, target_id: int = None) -> d
     }
 
 @mcp.tool()
-async def scan_github_secrets(repo_url: str = None, target_domain: str = None, target_id: int = None) -> dict:
+async def scan_github_secrets(target_id: int, repo_url: str = None, target_domain: str = None)) ->:
     """Check public github repository or search results for secrets using GITHUB_TOKEN."""
     github_token = os.getenv("GITHUB_TOKEN")
     secrets_found = []
@@ -185,7 +185,7 @@ async def scan_github_secrets(repo_url: str = None, target_domain: str = None, t
             return {"error": f"GitHub search failed: {str(e)}", "secrets_found": [], "total": 0}
 
     vulnerable = len(secrets_found) > 0
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Exposed Secrets on GitHub",
@@ -203,9 +203,9 @@ async def scan_github_secrets(repo_url: str = None, target_domain: str = None, t
     }
 
 @mcp.tool()
-async def check_cdn_integrity(url: str, target_id: int = None) -> dict:
+async def check_cdn_integrity(url: str, target_id: int)) ->:
     """Verifies if CDN-delivered JS files are utilizing Subresource Integrity (SRI) checks."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     cdn_resources = []
     missing_sri_count = 0
@@ -240,7 +240,7 @@ async def check_cdn_integrity(url: str, target_id: int = None) -> dict:
             })
             
     vulnerable = missing_sri_count > 0
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Missing Subresource Integrity (SRI) on CDN Resources",
@@ -259,7 +259,7 @@ async def check_cdn_integrity(url: str, target_id: int = None) -> dict:
     }
 
 @mcp.tool()
-async def check_dependency_confusion(domain: str, target_id: int = None) -> dict:
+async def check_dependency_confusion(domain: str, target_id: int)) ->:
     """Checks if internal package names are published on npm public registry."""
     # We query registry.npmjs.org for target packages to check if they are public.
     packages_checked = []
@@ -286,7 +286,7 @@ async def check_dependency_confusion(domain: str, target_id: int = None) -> dict
                 logger.debug("Dependency confusion check failed for %s: %s", pkg, e)
                 
     vuln = len(vulnerable) > 0
-    if vuln and target_id is not None:
+    if vuln:
         save_finding(
             target_id=target_id,
             title="Potential Dependency Confusion Risk",

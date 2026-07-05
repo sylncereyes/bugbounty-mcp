@@ -8,9 +8,9 @@ import logging
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def check_insecure_deserialization(url: str, params: dict = None, target_id: int = None) -> dict:
+async def check_insecure_deserialization(url: str, target_id: int, params: dict = None)) ->:
     """Checks parameters or cookies for signs of serialized objects (PHP, Python pickle, Java, etc.)."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     detected_type = "None"
     serialized_found = []
@@ -47,7 +47,7 @@ async def check_insecure_deserialization(url: str, params: dict = None, target_i
             logger.debug("Error checking deserialization at %s: %s", url, e)
 
     vulnerable = len(serialized_found) > 0
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Insecure Deserialization Indicator Found",
@@ -67,9 +67,9 @@ async def check_insecure_deserialization(url: str, params: dict = None, target_i
     }
 
 @mcp.tool()
-async def cache_poisoning_test(url: str, target_id: int = None) -> dict:
+async def cache_poisoning_test(url: str, target_id: int)) ->:
     """Checks for cache poisoning potential via unkeyed header reflection."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     vulnerable = False
     poisonable_headers = []
@@ -90,7 +90,7 @@ async def cache_poisoning_test(url: str, target_id: int = None) -> dict:
                 logger.debug("Error testing cache poisoning header %s at %s: %s", h, url, e)
             await delay()
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Potential Web Cache Poisoning / Reflection",
@@ -110,9 +110,9 @@ async def cache_poisoning_test(url: str, target_id: int = None) -> dict:
     }
 
 @mcp.tool()
-async def parameter_tampering_test(url: str, params: dict, method: str = "GET", target_id: int = None) -> dict:
+async def parameter_tampering_test(url: str, params: dict, target_id: int, method: str = "GET")) ->:
     """Tampering with parameters (e.g. changing role, price, or ID) to check for server side validation."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     tampered = []
     vulnerable = False
@@ -149,7 +149,7 @@ async def parameter_tampering_test(url: str, params: dict, method: str = "GET", 
                 logger.debug("Error tampering param %s at %s: %s", p_name, url, e)
             await delay()
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Parameter Tampering Vulnerability",
@@ -168,9 +168,9 @@ async def parameter_tampering_test(url: str, params: dict, method: str = "GET", 
     }
 
 @mcp.tool()
-async def check_saml_vulnerabilities(url: str, saml_response: str = None, target_id: int = None) -> dict:
+async def check_saml_vulnerabilities(url: str, target_id: int, saml_response: str = None)) ->:
     """Performs integrity check on SAML assertion signatures for XML Signature Wrapping (XSW) or weak sigs."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     
     import xml.etree.ElementTree as ET
@@ -213,7 +213,7 @@ async def check_saml_vulnerabilities(url: str, saml_response: str = None, target
         signature_present = False
 
     vulnerable = len(issues) > 0 or xsw_vulnerable
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Weak SAML Configuration / XSW Vulnerability",
@@ -233,9 +233,9 @@ async def check_saml_vulnerabilities(url: str, saml_response: str = None, target
     }
 
 @mcp.tool()
-async def mass_assignment_test(url: str, method: str = "POST", data: dict = None, extra_fields: dict = None, target_id: int = None) -> dict:
+async def mass_assignment_test(url: str, target_id: int, method: str = "POST", data: dict = None, extra_fields: dict = None)) ->:
     """Checks if adding privileged attributes (like isAdmin, role) updates server data."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     test_fields = extra_fields or {"isAdmin": True, "role": "admin", "is_admin": 1}
     vulnerable = False
@@ -263,7 +263,7 @@ async def mass_assignment_test(url: str, method: str = "POST", data: dict = None
         except Exception as e:
             logger.debug("Error testing mass assignment at %s: %s", url, e)
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Mass Assignment Vulnerability",
@@ -283,13 +283,13 @@ async def mass_assignment_test(url: str, method: str = "POST", data: dict = None
     }
 
 @mcp.tool()
-async def http_request_smuggling_check(url: str, target_id: int = None) -> dict:
+async def http_request_smuggling_check(url: str, target_id: int)) ->:
     """Probes for HTTP request smuggling indicators via conflicting headers.
     
     LIMITATION: This test uses httpx which normalizes HTTP headers. True CL.TE/TE.CL
     smuggling detection requires raw socket connections. Results should be verified
     with dedicated tools (Burp Suite, smuggler.py, or raw socket scripts)."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     potentially_vulnerable = False
     tests = []
@@ -310,7 +310,7 @@ async def http_request_smuggling_check(url: str, target_id: int = None) -> dict:
         except Exception as e:
             tests.append({"type": "CL.TE", "error": str(e), "timeout": False})
             
-    if potentially_vulnerable and target_id is not None:
+    if potentially_vulnerable:
         save_finding(
             target_id=target_id,
             title="Potential HTTP Request Smuggling",

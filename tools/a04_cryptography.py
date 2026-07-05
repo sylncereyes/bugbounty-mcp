@@ -13,7 +13,7 @@ from tools.http_utils import secure_request, get_client
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def jwt_analyze(token: str, target_id: int = None) -> dict:
+async def jwt_analyze(token: str, target_id: int)) ->:
     """Decodes a JWT without verification, analyzing its header and payload for security weaknesses."""
     parts = token.split(".")
     if len(parts) != 3:
@@ -61,7 +61,7 @@ async def jwt_analyze(token: str, target_id: int = None) -> dict:
         issues.append({"type": "No Expiration", "severity": "Medium", "description": "Token does not contain an 'exp' claim."})
         
     vulnerable = len(issues) > 0
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Insecure JWT Configuration",
@@ -83,7 +83,7 @@ async def jwt_analyze(token: str, target_id: int = None) -> dict:
     }
 
 @mcp.tool()
-async def ssl_cipher_check(hostname: str, port: int = 443, target_id: int = None) -> dict:
+async def ssl_cipher_check(hostname: str, target_id: int, port: int = 443)) ->:
     """Checks for weak SSL/TLS cipher suites (compatibility wrapper)."""
     # Simply delegates or matches local check
     from tools.http_utils import secure_request, tls_connect
@@ -104,7 +104,7 @@ async def ssl_cipher_check(hostname: str, port: int = 443, target_id: int = None
         version = "Unknown"
         cipher = "Unknown"
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Weak TLS Cipher Suite",
@@ -124,7 +124,7 @@ async def ssl_cipher_check(hostname: str, port: int = 443, target_id: int = None
     }
 
 @mcp.tool()
-async def detect_weak_hashing(url: str = None, hash_value: str = None, target_id: int = None) -> dict:
+async def detect_weak_hashing(target_id: int, url: str = None, hash_value: str = None)) ->:
     """Analyzes a hash value or pages for weak hashes like MD5 or SHA1."""
     recommendations = []
     is_weak = False
@@ -142,7 +142,7 @@ async def detect_weak_hashing(url: str = None, hash_value: str = None, target_id
             recommendations.append("Upgrade SHA1 hashing to SHA256 or SHA512.")
             
     vulnerable = is_weak
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Weak Hash Algorithm Detected",
@@ -161,9 +161,9 @@ async def detect_weak_hashing(url: str = None, hash_value: str = None, target_id
     }
 
 @mcp.tool()
-async def check_https_redirect(url: str, target_id: int = None) -> dict:
+async def check_https_redirect(url: str, target_id: int)) ->:
     """Checks if HTTP requests automatically redirect to HTTPS, and verifies HSTS."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     http_redirects = False
     hsts_present = False
@@ -208,7 +208,7 @@ async def check_https_redirect(url: str, target_id: int = None) -> dict:
     if not http_redirects or not hsts_present or hsts_max_age < 31536000:
         vulnerable = True
         
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Missing HTTPS Redirect or Insecure HSTS Configuration",
@@ -228,9 +228,9 @@ async def check_https_redirect(url: str, target_id: int = None) -> dict:
     }
 
 @mcp.tool()
-async def check_sensitive_data_exposure(url: str, target_id: int = None) -> dict:
+async def check_sensitive_data_exposure(url: str, target_id: int)) ->:
     """Scans response bodies for accidentally exposed sensitive information."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     patterns = {
         "Credit Card (VISA/Mastercard)": r"\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14})\b",
@@ -258,7 +258,7 @@ async def check_sensitive_data_exposure(url: str, target_id: int = None) -> dict
             })
             
     vulnerable = len(findings) > 0
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Sensitive Data Exposure",
@@ -277,9 +277,9 @@ async def check_sensitive_data_exposure(url: str, target_id: int = None) -> dict
     }
 
 @mcp.tool()
-async def padding_oracle_check(url: str, encrypted_param: str, param_name: str, target_id: int = None) -> dict:
+async def padding_oracle_check(url: str, encrypted_param: str, param_name: str, target_id: int)) ->:
     """Checks for Padding Oracle vulnerability by measuring timing/response variance on parameter modifications."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     # We will simulate a padding oracle check by modifying the ciphertext last byte
     vulnerable = False

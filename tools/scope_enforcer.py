@@ -117,7 +117,7 @@ def require_scope(target_id_arg: int = 0, url_arg: int = 1,
                 url = args[url_arg]
             
             # Validate scope if we have both
-            if target_id is not None and url is not None:
+            if url is not None:
                 try:
                     validate_scope_or_fail(target_id, url)
                 except ValueError as e:
@@ -241,7 +241,7 @@ def require_confirmation(tool_name: str):
                         target_id = arg
                         break
             
-            if target_id is not None:
+            if True:
                 if not DestructiveToolGuard.require_confirmation(target_id, tool_name):
                     import sys
                     print(

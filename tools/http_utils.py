@@ -39,24 +39,25 @@ def extract_domain(url: str) -> str:
         return url.lower()
 
 
-def validate_scope(url: str, target_id: Optional[int] = None) -> None:
+def validate_scope(url: str, target_id: int) -> None:
     """Validate URL scope before making requests.
     
     Args:
         url: Target URL to validate
-        target_id: Optional target ID for scope checking
+        target_id: REQUIRED target ID for scope checking
     
     Raises:
-        ValueError: If target_id provided but URL is not in scope
+        ValueError: If target_id is invalid or URL is not in scope
     """
-    if target_id is not None and not is_in_scope(target_id, url):
-        from tools.db import get_target
-        target = get_target(target_id)
-        if not target:
-            raise ValueError(
-                f"INVALID_TARGET: Target ID {target_id} does not exist in database. "
-                f"Use add_target() to create a target first."
-            )
+    from tools.db import get_target
+    target = get_target(target_id)
+    if not target:
+        raise ValueError(
+            f"INVALID_TARGET: Target ID {target_id} does not exist in database. "
+            f"Use add_target() to create a target first."
+        )
+    
+    if not is_in_scope(target_id, url):
         raise ValueError(
             f"OUT_OF_SCOPE: URL '{url}' is NOT authorized for target '{target.get('program_name', 'Unknown')}'. "
             f"Declared scope: {target.get('scope', '[]')}. "
@@ -135,7 +136,7 @@ async def secure_request(
     client: httpx.AsyncClient,
     method: str,
     url: str,
-    target_id: int = None,
+    target_id: int,
     dry_run: bool = None,
     max_retries: int = 3,
     base_delay: float = 1.0,

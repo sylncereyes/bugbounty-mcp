@@ -7,9 +7,9 @@ from tools.http_utils import secure_request, get_client, delay
 logger = logging.getLogger("agy")
 
 @mcp.tool()
-async def rate_limit_check(url: str, method: str = "POST", data: dict = None, requests_count: int = 15, target_id: int = None) -> dict:
+async def rate_limit_check(url: str, target_id: int, method: str = "POST", data: dict = None, requests_count: int = 15)) ->:
     """Sends multiple requests in rapid succession to check if rate limiting is enforced."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     status_codes = []
     headers_detected = {}
@@ -41,7 +41,7 @@ async def rate_limit_check(url: str, method: str = "POST", data: dict = None, re
             await delay()
 
     # If we hit no 429 status code, rate limit check fails
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Missing Rate Limit Protection",
@@ -62,9 +62,9 @@ async def rate_limit_check(url: str, method: str = "POST", data: dict = None, re
     }
 
 @mcp.tool()
-async def business_logic_price_test(checkout_url: str, product_url: str = None, params: dict = None, target_id: int = None) -> dict:
+async def business_logic_price_test(checkout_url: str, target_id: int, product_url: str = None, params: dict = None)) ->:
     """Checks for price or quantity manipulation vulnerabilities in shopping cart processes."""
-    if target_id is not None and not is_in_scope(target_id, checkout_url):
+    if not is_in_scope(target_id, checkout_url):
         return {"error": f"URL {checkout_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     # Price parameter manipulation simulation
     test_params = params or {"price": "-10.00", "quantity": "-1", "amount": "0.01"}
@@ -85,7 +85,7 @@ async def business_logic_price_test(checkout_url: str, product_url: str = None, 
         except Exception as e:
             logger.debug("Business logic price test failed: %s", e)
             
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Business Logic Price Manipulation",
@@ -104,9 +104,9 @@ async def business_logic_price_test(checkout_url: str, product_url: str = None, 
     }
 
 @mcp.tool()
-async def captcha_bypass_check(url: str, form_data: dict = None, target_id: int = None) -> dict:
+async def captcha_bypass_check(url: str, target_id: int, form_data: dict = None)) ->:
     """Evaluates if CAPTCHA restrictions can be bypassed by removing parameters."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     has_captcha = False
     bypassable = False
@@ -131,7 +131,7 @@ async def captcha_bypass_check(url: str, form_data: dict = None, target_id: int 
         except Exception as e:
             logger.debug("CAPTCHA bypass check failed: %s", e)
 
-    if bypassable and target_id is not None:
+    if bypassable:
         save_finding(
             target_id=target_id,
             title="CAPTCHA Bypass Vulnerability",
@@ -151,14 +151,14 @@ async def captcha_bypass_check(url: str, form_data: dict = None, target_id: int 
     }
 
 @mcp.tool()
-async def race_condition_test(url: str, method: str = "POST", data: dict = None, concurrent_count: int = 8, target_id: int = None) -> dict:
+async def race_condition_test(url: str, target_id: int, method: str = "POST", data: dict = None, concurrent_count: int = 8)) ->:
     """Sends concurrent async HTTP requests to check for race conditions (e.g. transfer/coupon double-use)."""
-    if target_id is not None and not is_in_scope(target_id, url):
+    if not is_in_scope(target_id, url):
         return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     success_count = 0
     responses = []
     
-    async def send_req(client):
+    async def send_req(client)):
         try:
             if method.upper() == "POST":
                 res = await secure_request(client, "POST", url, json=data)
@@ -181,7 +181,7 @@ async def race_condition_test(url: str, method: str = "POST", data: dict = None,
     # Vulnerable if more than 1 requests succeeded concurrently when only 1 should (assumed checking logical action)
     vulnerable = success_count > 1
     
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Potential Race Condition Vulnerability",
@@ -202,9 +202,9 @@ async def race_condition_test(url: str, method: str = "POST", data: dict = None,
     }
 
 @mcp.tool()
-async def password_policy_check(register_url: str, login_url: str = None, target_id: int = None) -> dict:
+async def password_policy_check(register_url: str, target_id: int, login_url: str = None)) ->:
     """Verifies register endpoint acceptance of weak passwords."""
-    if target_id is not None and not is_in_scope(target_id, register_url):
+    if not is_in_scope(target_id, register_url):
         return {"error": f"URL {register_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     weak_passwords = ["123", "password", "qwerty"]
     accepted = []
@@ -222,7 +222,7 @@ async def password_policy_check(register_url: str, login_url: str = None, target
             await delay()
                 
     vulnerable = len(accepted) > 0
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Weak Password Policy Enforced",
@@ -242,9 +242,9 @@ async def password_policy_check(register_url: str, login_url: str = None, target
     }
 
 @mcp.tool()
-async def mfa_bypass_check(login_url: str, mfa_url: str = None, username: str = None, password: str = None, target_id: int = None) -> dict:
+async def mfa_bypass_check(login_url: str, target_id: int, mfa_url: str = None, username: str = None, password: str = None)) ->:
     """Analyzes if MFA authentication controls can be bypassed by skipping steps."""
-    if target_id is not None and not is_in_scope(target_id, login_url):
+    if not is_in_scope(target_id, login_url):
         return {"error": f"URL {login_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     
     vulnerable = False
@@ -275,7 +275,7 @@ async def mfa_bypass_check(login_url: str, mfa_url: str = None, username: str = 
                 logger.debug("MFA step bypass test error: %s", e)
             await delay()
 
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="MFA Authentication Bypass",
@@ -295,9 +295,9 @@ async def mfa_bypass_check(login_url: str, mfa_url: str = None, username: str = 
     }
 
 @mcp.tool()
-async def account_enumeration_test(login_url: str, register_url: str = None, reset_url: str = None, usernames: list = None, target_id: int = None) -> dict:
+async def account_enumeration_test(login_url: str, target_id: int, register_url: str = None, reset_url: str = None, usernames: list = None)) ->:
     """Tests if differences in response messages or timing leaks valid accounts."""
-    if target_id is not None and not is_in_scope(target_id, login_url):
+    if not is_in_scope(target_id, login_url):
         return {"error": f"URL {login_url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     if not usernames:
         usernames = ["admin", "testuser_doesnotexist"]
@@ -320,7 +320,7 @@ async def account_enumeration_test(login_url: str, register_url: str = None, res
             diff_msg = True
         
     vulnerable = diff_msg
-    if vulnerable and target_id is not None:
+    if vulnerable:
         save_finding(
             target_id=target_id,
             title="Account Enumeration Vulnerability",
