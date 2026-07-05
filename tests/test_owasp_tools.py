@@ -35,7 +35,7 @@ class TestA02Misconfiguration:
         from tools.a02_misconfiguration import tls_ssl_check
         import inspect
         sig = inspect.signature(tls_ssl_check)
-        assert 'hostname' in inspect.signature(tls_ssl_check).parameters
+        assert 'hostname' in sig.parameters
 
     def test_security_headers_check_signature(self):
         """Verify security_headers_check has scope params."""

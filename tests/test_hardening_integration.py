@@ -49,9 +49,17 @@ class TestSecureRequest:
         assert 'max_retries' in params, "secure_request missing max_retries param"
         assert 'base_delay' in params, "secure_request missing base_delay param"
 
-    def test_dry_run_returns_mock(self):
+    def test_dry_run_returns_mock(self, setup_test_db):
         """Test dry_run mode returns mock response without HTTP call."""
         from tools.http_utils import secure_request, get_client
+        
+        # Create a target for scope validation
+        from tools.db import add_target
+        target_id = add_target(
+            program_name="Test Target",
+            domain="example.com",
+            scope=["example.com"]
+        )
 
         async def test_async():
             async with get_client() as client:
@@ -59,6 +67,7 @@ class TestSecureRequest:
                     client=client,
                     method="GET",
                     url="https://example.com",
+                    target_id=target_id,
                     dry_run=True
                 )
                 return res.status_code, res.text
@@ -115,7 +124,7 @@ class TestScopeValidation:
         )
 
         with pytest.raises(ValueError, match="OUT_OF_SCOPE"):
-            validate_scope("https://evil.com", target_id)
+            validate_scope(target_id, "https://evil.com")
 
 
 class TestEncryption:
