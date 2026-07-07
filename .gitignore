@@ -13,3 +13,19 @@ knowledge_base/hacktricks/
 knowledge_base/nuclei-templates/
 knowledge_base/gtfobins/
 knowledge_base/lolbas/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+
+# pytest cache
+.pytest_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
