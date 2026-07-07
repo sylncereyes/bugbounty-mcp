@@ -1,3 +1,4 @@
+import re
 """
 Shared HTTP Client Utilities
 All tool modules should use get_sync_client() (sync) or get_async_client() (async) 
@@ -402,3 +403,59 @@ def assert_safe_target_sync(url: str) -> None:
 def tls_connect(hostname: str, port: int = 443):
     """Simple TLS connect stub for tests – returns a tuple describing TLS version."""
     return "TLSv1.3", ("TLS_AES_256_GCM_SHA384",), None
+
+# Keys/patterns yang dianggap sensitif dan wajib diredaksi dari laporan
+_SENSITIVE_KEYS = {
+    "password", "passwd", "pwd", "secret", "token", "access_token",
+    "refresh_token", "api_key", "apikey", "authorization", "auth",
+    "cookie", "session", "session_id", "sessionid", "credential",
+    "credentials", "private_key", "client_secret", "bearer",
+}
+
+_SENSITIVE_VALUE_PATTERNS = [
+    re.compile(r'Bearer\s+[A-Za-z0-9\-._~+/]+=*', re.IGNORECASE),
+    re.compile(r'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'),  # JWT-like
+    re.compile(r'(?i)(api[_-]?key|token|secret)["\']?\s*[:=]\s*["\']?[A-Za-z0-9\-._~+/]{16,}'),
+]
+
+_REDACTED = "***REDACTED***"
+
+
+def _redact_value(value: str) -> str:
+    """Redact known sensitive patterns within a string value."""
+    if not isinstance(value, str):
+        return value
+    result = value
+    for pattern in _SENSITIVE_VALUE_PATTERNS:
+        result = pattern.sub(_REDACTED, result)
+    return result
+
+
+def sanitize_output(data):
+    """Recursively redact sensitive data (tokens, cookies, credentials) from
+    findings/stats before they are included in a generated report.
+
+    Handles dict, list, tuple, and str inputs recursively. Any dict key
+    matching a known-sensitive name (password, token, cookie, secret, etc.)
+    has its value fully redacted regardless of content. String values are
+    additionally scanned for embedded sensitive patterns (Bearer tokens,
+    JWT-like strings, key=value secrets) even under non-sensitive keys.
+
+    Does not mutate the input; returns a sanitized copy.
+    """
+    if isinstance(data, dict):
+        sanitized = {}
+        for key, value in data.items():
+            key_lower = str(key).lower()
+            if any(sensitive in key_lower for sensitive in _SENSITIVE_KEYS):
+                sanitized[key] = _REDACTED
+            else:
+                sanitized[key] = sanitize_output(value)
+        return sanitized
+    elif isinstance(data, (list, tuple)):
+        sanitized_list = [sanitize_output(item) for item in data]
+        return sanitized_list if isinstance(data, list) else tuple(sanitized_list)
+    elif isinstance(data, str):
+        return _redact_value(data)
+    else:
+        return data
