@@ -28,10 +28,32 @@ capabilities aligned with the OWASP Top 10 2021.
   seclists_kb, portswigger_kb, portswigger_notes_kb, rfc_kb.
 
 ## ⚖️ Attribution
-StealthVision-MCP evolved from an early prototype framework. We acknowledge the original 
-architectural concepts and have refactored the system to ensure strict security 
-and scope enforcement.
 
-## ⚠️ Legal Disclaimer
-This tool is for authorized security testing only. Unauthorized use is illegal.
+This project's HTTP tooling framework originated from an early prototype
+named "StealthVision". It has since been substantially refactored, hardened
+(SSRF protection, mandatory scope validation, redirect guard), and rebranded
+as AGY. We acknowledge the earlier framework as the foundation this project
+built upon.
+
+## Tool Categories
+
+Tools in this project fall into two categories:
+
+**Live Active Testing** — makes real HTTP requests against the target you
+specify, subject to mandatory scope validation and SSRF protection:
+- a01_access_control, a02_misconfiguration, a03_supply_chain,
+  a04_cryptography, a05_injection, a06_insecure_design, a07_authentication,
+  a08_integrity, a09_logging, a10_exceptions
+- recon, reporting, intelligence, hunter, subdomain_brute, port_scanner,
+  browser_analysis
+
+**Static Knowledge / Reference** — returns cheat-sheets, lookup data, or
+generated templates; does NOT make network requests:
+- *_kb.py modules (cve_kb, cwe_kb, htb_kb, thm_kb, hacktricks_kb,
+  portswigger_kb, seclists_kb, rfc_kb, etc.)
+- knowledge_base, rag_engine, mode_selector
+
+⚠️ Only "Live Active Testing" tools require a registered `target_id` and are
+bound by scope enforcement. Always verify you have written authorization
+before running these against any target.
 """
