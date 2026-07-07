@@ -35,6 +35,14 @@ named "StealthVision". It has since been substantially refactored, hardened
 as AGY. We acknowledge the earlier framework as the foundation this project
 built upon.
 
+## Attribution
+
+This project's HTTP tooling framework originated from an early prototype
+named "StealthVision". It has since been substantially refactored, hardened
+(SSRF protection, mandatory scope validation, redirect guard), and rebranded
+as AGY. We acknowledge the earlier framework as the foundation this project
+built upon.
+
 ## Tool Categories
 
 Tools in this project fall into two categories:
