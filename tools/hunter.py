@@ -21,7 +21,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from mcp_instance import mcp
-from tools.db import db_connection, init_db
+from tools.db import db_connection, init_db, is_in_scope
 from tools.http_utils import get_async_client as get_client, delay
 from tools.validators import validate_required_string, validate_url
 from config import GITHUB_TOKEN, DEFAULT_TIMEOUT

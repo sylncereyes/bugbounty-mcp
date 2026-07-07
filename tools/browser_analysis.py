@@ -174,7 +174,7 @@ async def verify_target_is_web(url: str, timeout: int = 15, browser: Optional[st
         target_id: Target ID for scope validation (raises ValueError if out of scope)
     """
     # Scope validation - FAIL if out of scope
-    validate_scope(url, target_id)
+    validate_scope(target_id, url)
     
     if not _sync_ensure_browser():
         return {"error": "Playwright not installed. Run: pip install playwright && playwright install chromium"}
@@ -438,7 +438,7 @@ async def check_xss_in_browser(url: str, param: str, payloads: Optional[List[str
         target_id: Target ID for scope validation (raises ValueError if out of scope)
     """
     # Scope validation - FAIL if out of scope
-    validate_scope(url, target_id)
+    validate_scope(target_id, url)
     
     if not _sync_ensure_browser():
         return {"error": "Playwright not installed"}
