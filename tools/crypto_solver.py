@@ -1,4 +1,4 @@
-"""StealthVision-MCP - CTF Crypto Solver Module"""
+"""CTF Crypto Solver Module"""
 import base64
 import codecs
 import re

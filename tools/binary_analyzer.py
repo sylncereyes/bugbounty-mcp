@@ -1,4 +1,4 @@
-"""StealthVision-MCP - Binary Analyzer Module"""
+"""Binary Analyzer Module"""
 import base64
 import re
 from mcp_instance import mcp

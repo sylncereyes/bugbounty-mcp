@@ -1,5 +1,5 @@
 """
-StealthVision-MCP Server - Main Entry Point
+AGY-MCP Server - Main Entry Point
 OWASP Top 10 2021 Vulnerability Assessment Platform
 
 Usage:
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     import logging
 
     parser = argparse.ArgumentParser(
-        description="StealthVision-MCP Server - OWASP Top 10 2021"
+        description="AGY-MCP Server - OWASP Top 10 2021"
     )
     parser.add_argument(
         "--transport",
@@ -161,24 +161,24 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    print(f"[StealthVision] Loaded {len(_loaded)}/{len(_TOOL_MODULES)} tool modules", file=sys.stderr)
+    print(f"[AGY] Loaded {len(_loaded)}/{len(_TOOL_MODULES)} tool modules", file=sys.stderr)
     if _failed:
         for mod, err in _failed:
-            print(f"[StealthVision] FAILED: {mod} - {err}", file=sys.stderr)
+            print(f"[AGY] FAILED: {mod} - {err}", file=sys.stderr)
 
     # ── Confirm Universal System Prompt injection ──────────────────────────────
     if not _DISABLE_SYSTEM_PROMPT:
         print(
-            f"[StealthVision] Universal Bug Bounty System Prompt ACTIVE "
+            f"[AGY] Universal Bug Bounty System Prompt ACTIVE "
             f"({len(_SYSTEM_PROMPT):,} chars) -- "
-            "all connected MCP clients will adopt the StealthVision persona.",
+            "all connected MCP clients will adopt the AGY persona.",
             file=sys.stderr,
         )
     else:
-        print("[StealthVision] System Prompt injection DISABLED (--env DISABLE_SYSTEM_PROMPT=true)", file=sys.stderr)
+        print("[AGY] System Prompt injection DISABLED (--env DISABLE_SYSTEM_PROMPT=true)", file=sys.stderr)
 
     if not VERIFY_SSL:
-        print("[StealthVision] WARNING: SSL verification is disabled (VERIFY_SSL=false)", file=sys.stderr)
+        print("[AGY] WARNING: SSL verification is disabled (VERIFY_SSL=false)", file=sys.stderr)
 
     if args.transport == "sse":
         # ─── SSE Authentication Setup ────────────────────────────────────────────
@@ -196,10 +196,10 @@ if __name__ == "__main__":
             else:
                 # Wrap SSE app with auth middleware
                 sse_app_instance = SSEAuthMiddleware(app=sse_app_instance)
-                print("[StealthVision] SSE authentication ENABLED (Bearer token required)", file=sys.stderr)
+                print("[AGY] SSE authentication ENABLED (Bearer token required)", file=sys.stderr)
         
-        print(f"[StealthVision] Starting SSE server on {args.host}:{args.port}", file=sys.stderr)
+        print(f"[AGY] Starting SSE server on {args.host}:{args.port}", file=sys.stderr)
         uvicorn.run(sse_app_instance, host=args.host, port=args.port, log_level="info")
     else:
-        print("[StealthVision] Starting stdio server...", file=sys.stderr)
+        print("[AGY] Starting stdio server...", file=sys.stderr)
         mcp.run(transport="stdio")

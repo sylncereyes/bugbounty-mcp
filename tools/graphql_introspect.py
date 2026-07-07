@@ -1,22 +1,33 @@
-"""StealthVision-MCP - GraphQL Introspection & Query Generation Module"""
+"""GraphQL Introspection & Query Generation Module"""
 import httpx
 import json
 import logging
 from mcp_instance import mcp
+from tools.http_utils import secure_request_sync, get_sync_client
+from tools.db import is_in_scope
+import logging
 
 logger = logging.getLogger("stealthvision")
 from config import USER_AGENT, DEFAULT_TIMEOUT
 
 @mcp.tool()
-def graphql_introspect(endpoint: str) -> dict:
+def graphql_introspect(endpoint: str, target_id: int) -> dict:
     """Introspect GraphQL schema and extract all queries/mutations."""
+    if not is_in_scope(target_id, endpoint):
+        return {"error": f"URL {endpoint} is out of scope for target {target_id}. Scan aborted.", "success": False}
+    
     try:
         query = {
             "query": "{ __schema { types { name fields { name } } } }"
         }
         
-        client = httpx.Client(timeout=DEFAULT_TIMEOUT, headers={"User-Agent": USER_AGENT})
-        r = client.post(endpoint, json=query)
+        client = get_sync_client()
+        r = secure_request_sync(
+            client, "POST",
+            endpoint,
+            target_id,
+            json=query
+        )
         
         if r.status_code == 200:
             result = r.json()
@@ -42,6 +53,8 @@ def graphql_introspect(endpoint: str) -> dict:
             return {"error": f"Introspection failed: {r.status_code}", "success": False}
     except Exception as e:
         return {"error": str(e), "success": False}
+    finally:
+        client.close()
 
 @mcp.tool()
 def graphql_generate_queries(queries: list, mutations: list) -> dict:

@@ -29,7 +29,7 @@ async def security_headers_check(url: str, target_id: int) -> dict:
     resp_headers = {}
     async with get_client() as client:
         try:
-            res = await secure_request(client, "GET", url)
+            res = await secure_request(client, "GET", url, target_id=target_id)
             resp_headers = res.headers
         except Exception as e:
             return {"error": f"Failed to connect: {str(e)}"}
@@ -141,7 +141,7 @@ async def exposed_files_check(base_url: str, target_id: int) -> dict:
             await delay()
             target = base_url.rstrip("/") + f
             try:
-                res = await secure_request(client, "GET", target)
+                res = await secure_request(client, "GET", target, target_id=target_id)
                 if res.status_code == 200:
                     snippet = res.text[:200]
                     # Check for pattern matches for .env
@@ -192,7 +192,7 @@ async def cookie_security_check(url: str, target_id: int) -> dict:
     
     async with get_client() as client:
         try:
-            res = await secure_request(client, "GET", url)
+            res = await secure_request(client, "GET", url, target_id=target_id)
             cookies = res.headers.get_list("Set-Cookie")
         except Exception as e:
             return {"error": f"Connection failed: {str(e)}"}
@@ -249,7 +249,7 @@ async def directory_listing_check(url: str, target_id: int, paths: list = None) 
             await delay()
             target = url.rstrip("/") + p
             try:
-                res = await secure_request(client, "GET", target)
+                res = await secure_request(client, "GET", target, target_id=target_id)
                 body = res.text
                 if res.status_code == 200 and any(k in body for k in ["Index of /", "Directory listing for", "Parent Directory"]):
                     enabled_paths.append(p)
@@ -298,7 +298,7 @@ async def default_credentials_check(url: str, target_id: int, service_type: str 
             await delay()
             try:
                 # Try Basic Auth first
-                res = await secure_request(client, "GET", url, auth=(user, pwd))
+                res = await secure_request(client, "GET", url, target_id=target_id, auth=(user, pwd))
                 if res.status_code in [200, 302] and "unauthorized" not in res.text.lower() and "login" not in res.text.lower():
                     successful.append((user, pwd))
                     vulnerable = True
@@ -359,7 +359,7 @@ async def subdomain_takeover_check(domain: str, target_id: int) -> dict:
     if cname:
         async with get_client() as client:
             try:
-                res = await secure_request(client, "GET", f"http://{domain}")
+                res = await secure_request(client, "GET", f"http://{domain}", target_id=target_id)
                 body = res.text
                 for service, fp in takeover_fingerprints.items():
                     if fp in body:
@@ -404,7 +404,7 @@ async def admin_panel_discovery(base_url: str, target_id: int) -> dict:
             await delay()
             target = base_url.rstrip("/") + path
             try:
-                res = await secure_request(client, "GET", target)
+                res = await secure_request(client, "GET", target, target_id=target_id)
                 if res.status_code in [200, 301, 302, 401, 403]:
                     has_form = "password" in res.text.lower() or "login" in res.text.lower()
                     found.append({

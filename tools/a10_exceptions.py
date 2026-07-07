@@ -22,7 +22,7 @@ async def error_handling_analysis(url: str, target_id: int) -> dict:
     async with get_client() as client:
         for inp in invalid_inputs:
             try:
-                res = await secure_request(client, "GET", url, params=inp)
+                res = await secure_request(client, "GET", url, target_id=target_id, params=inp)
                 if first_status is None:
                     first_status = res.status_code
                 elif first_status != res.status_code:
@@ -70,7 +70,7 @@ async def timing_attack_check(url: str, params: dict, valid_value: str, invalid_
             test_params[param_name] = valid_value
             try:
                 start = time.time()
-                await secure_request(client, "GET", url, params=test_params)
+                await secure_request(client, "GET", url, target_id=target_id, params=test_params)
                 valid_times.append(time.time() - start)
             except Exception as e:
                 logger.debug("Error during valid timing test at %s: %s", url, e)
@@ -82,7 +82,7 @@ async def timing_attack_check(url: str, params: dict, valid_value: str, invalid_
             test_params[param_name] = invalid_value
             try:
                 start = time.time()
-                await secure_request(client, "GET", url, params=test_params)
+                await secure_request(client, "GET", url, target_id=target_id, params=test_params)
                 invalid_times.append(time.time() - start)
             except Exception as e:
                 logger.debug("Error during invalid timing test at %s: %s", url, e)
@@ -133,7 +133,7 @@ async def check_fail_open(url: str, auth_data: dict, target_id: int) -> dict:
             
     async with get_client() as client:
         try:
-            res = await secure_request(client, "POST", url, json=test_data)
+            res = await secure_request(client, "POST", url, target_id=target_id, json=test_data)
             status_code = res.status_code
             if res.status_code == 200 and "unauthorized" not in res.text.lower() and "invalid" not in res.text.lower():
                 vulnerable = True

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-StealthVision-MCP - Browser Automation Tools
+Browser Automation Tools
 Uses Playwright/Chromium for target verification and false-positive prevention.
 Captures request-response for HTTP-based vulnerability validation.
 Supports dynamic browser detection (Chrome, Firefox, Brave, Chromium).

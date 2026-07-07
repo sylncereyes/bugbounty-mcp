@@ -1,4 +1,4 @@
-"""StealthVision-MCP - Rate Limit Bypass Toolkit"""
+"""Rate Limit Bypass Toolkit"""
 import time
 import random
 import logging

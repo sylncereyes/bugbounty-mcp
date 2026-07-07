@@ -1,4 +1,4 @@
-"""StealthVision-MCP - Advanced Port Scanner with Nmap Integration"""
+"""Advanced Port Scanner with Nmap Integration"""
 import subprocess
 import json
 import logging

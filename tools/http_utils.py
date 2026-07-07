@@ -1,13 +1,22 @@
 """
-StealthVision-MCP - Shared HTTP Client Utilities
-All tool modules should use get_client() instead of creating their own httpx.AsyncClient.
+Shared HTTP Client Utilities
+All tool modules should use get_sync_client() (sync) or get_async_client() (async) 
+instead of creating their own httpx.Client/AsyncClient.
+
+Security Features:
+  • SSRF protection via per-request DNS validation against private network denylist
+  • Mandatory target_id scope validation for all requests
+  • Dry-run support for safe testing
+  • Exponential backoff retry mechanism
 """
 import asyncio
 import ipaddress
 import logging
 import socket
+import time
 import httpx
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
+from typing import Optional, Tuple
 from typing import Optional, Tuple
 
 from config import DEFAULT_TIMEOUT, USER_AGENT, VERIFY_SSL, REQUEST_DELAY, DRY_RUN
@@ -38,6 +47,10 @@ _DENIED_NETWORKS = [
     ipaddress.ip_network("fc00::/7"),
     ipaddress.ip_network("::ffff:0:0/96"),      # IPv4-mapped IPv6
 ]
+
+# Redirect status codes that require manual handling when follow_redirects=False
+_REDIRECT_STATUS_CODES = {301, 302, 303, 307, 308}
+MAX_REDIRECT_HOPS = 5
 
 
 class SSRFBlockedError(ValueError):
@@ -84,45 +97,37 @@ async def _resolve_and_validate(hostname: str) -> str:
     return str(pinned_ip)
 
 
-class PinnedResolverTransport(httpx.AsyncHTTPTransport):
-    """Transport placeholder for future SNI-pinned implementation.
-    
-    Currently unused - SSRF protection is handled in secure_request().
-    """
-    def __init__(self, pinned_ip: str, **kwargs):
-        super().__init__(**kwargs)
-        self._pinned_ip = pinned_ip
-
-
 async def secure_request(
     client: httpx.AsyncClient,
     method: str,
     url: str,
-    target_id: Optional[int] = None,
-    dry_run: bool = None,
+    target_id: int,
+    dry_run: Optional[bool] = None,
     max_retries: int = 3,
     base_delay: float = 1.0,
     follow_redirects: bool = False,
+    manual_follow_redirects: bool = False,
     **kwargs,
 ) -> httpx.Response:
     """Execute HTTP request with SSRF protection, scope validation, and dry-run.
 
-    SSRF protection: Validates DNS resolution BEFORE making any network request.
-    This closes the attack window for DNS rebinding by ensuring the hostname
-    cannot resolve to internal/private IP ranges.
-    
-    Scope validation ensures requests are only made to authorized target scope.
+    Security Features:
+      • SSRF protection: Validates DNS resolution BEFORE each request attempt,
+        mitigating DNS rebinding across retry backoff windows.
+      • Scope validation: All requests require target_id, validated against
+        registered target scope before any network operation.
+      • Dry-run support: Returns mock response when DRY_RUN is enabled.
+      • Retry with backoff: Exponential delay with per-attempt SSRF re-validation.
     """
-    # 1. SSRF mitigation – resolve and validate the hostname first
-    hostname = urlparse(url).hostname
-    if hostname:
-        await _resolve_and_validate(hostname)
+    # 1. Scope validation (MANDATORY)
+    if target_id is None:
+        raise ValueError(
+            "SCOPE_VALIDATION_REQUIRED: target_id must be provided for all requests. "
+            "Use add_target() to register a target before making requests."
+        )
+    validate_scope_or_fail(target_id, url)
 
-    # 2. Scope validation (if a target identifier is supplied)
-    if target_id is not None:
-        validate_scope_or_fail(target_id, url)
-
-    # 3. Dry-run handling – short-circuit the request while preserving the
+    # 2. Dry-run handling – short-circuit the request while preserving the
     #    signature and logging for auditability.
     if dry_run is None:
         dry_run = DRY_RUN
@@ -134,11 +139,22 @@ async def secure_request(
             request=httpx.Request(method, url),
         )
 
-    # 4. Execute the request with exponential backoff.
+    # 3. Execute the request with exponential backoff and per-attempt SSRF re-validation
     async def _do_request() -> httpx.Response:
-        return await client.request(
+        hostname = urlparse(url).hostname
+        if hostname:
+            await _resolve_and_validate(hostname)
+        response = await client.request(
             method, url, follow_redirects=follow_redirects, **kwargs
         )
+        
+        # Manual redirect following with scope validation if requested
+        if manual_follow_redirects and not follow_redirects:
+            return await _follow_redirects_safely(
+                client, method, url, target_id, response, **kwargs
+            )
+        
+        return response
 
     attempt = 0
     while True:
@@ -151,50 +167,184 @@ async def secure_request(
             attempt += 1
 
 
-def make_safe_request(
+def _resolve_and_validate_sync(hostname: str) -> str:
+    """Sync version of _resolve_and_validate – used by pure-sync tools."""
+    if not hostname:
+        raise SSRFBlockedError("No hostname provided")
+    try:
+        addrs = socket.getaddrinfo(
+            hostname, None, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM
+        )
+    except socket.gaierror as e:
+        raise SSRFBlockedError(f"DNS resolution failed for {hostname}: {e}")
+
+    pinned_ip = None
+    for family, socktype, proto, canonname, sockaddr in addrs:
+        raw_ip = sockaddr[0]
+        ip = ipaddress.ip_address(raw_ip)
+        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+            ip = ip.ipv4_mapped
+        if any(ip in net for net in _DENIED_NETWORKS):
+            continue
+        if isinstance(ip, ipaddress.IPv4Address) or pinned_ip is None:
+            pinned_ip = ip
+    if pinned_ip is None:
+        raise SSRFBlockedError(f"{hostname} resolves ONLY to blocked ranges")
+    return str(pinned_ip)
+
+
+async def _follow_redirects_safely(
+    client: httpx.AsyncClient,
     method: str,
     url: str,
     target_id: int,
-    client: Optional[httpx.AsyncClient] = None,
-    dry_run: bool = None,
+    response: httpx.Response,
+    **kwargs,
+) -> httpx.Response:
+    """Manually follow redirect chain, re-validating scope + SSRF at EVERY hop.
+    
+    Raises ValueError if any hop in the chain is out of scope or SSRF-blocked.
+    """
+    hop = 0
+    current_response = response
+    current_url = url
+    
+    while current_response.status_code in _REDIRECT_STATUS_CODES and hop < MAX_REDIRECT_HOPS:
+        location = current_response.headers.get("Location")
+        if not location:
+            break
+        
+        next_url = urljoin(current_url, location)
+        validate_scope_or_fail(target_id, next_url)
+        
+        next_hostname = urlparse(next_url).hostname
+        if next_hostname:
+            await _resolve_and_validate(next_hostname)
+        
+        current_response = await client.request(
+            method, next_url, follow_redirects=False, **kwargs
+        )
+        current_url = next_url
+        hop += 1
+    
+    if hop >= MAX_REDIRECT_HOPS:
+        raise ValueError(f"Too many redirects (>{MAX_REDIRECT_HOPS}) starting from {url}")
+    
+    return current_response
+
+
+def _follow_redirects_safely_sync(
+    client: httpx.Client,
+    method: str,
+    url: str,
+    target_id: int,
+    response: httpx.Response,
+    **kwargs,
+) -> httpx.Response:
+    """Sync version of _follow_redirects_safely."""
+    hop = 0
+    current_response = response
+    current_url = url
+    
+    while current_response.status_code in _REDIRECT_STATUS_CODES and hop < MAX_REDIRECT_HOPS:
+        location = current_response.headers.get("Location")
+        if not location:
+            break
+        
+        next_url = urljoin(current_url, location)
+        validate_scope_or_fail(target_id, next_url)
+        
+        next_hostname = urlparse(next_url).hostname
+        if next_hostname:
+            _resolve_and_validate_sync(next_hostname)
+        
+        current_response = client.request(
+            method, next_url, follow_redirects=False, **kwargs
+        )
+        current_url = next_url
+        hop += 1
+    
+    if hop >= MAX_REDIRECT_HOPS:
+        raise ValueError(f"Too many redirects (>{MAX_REDIRECT_HOPS}) starting from {url}")
+    
+    return current_response
+
+
+def secure_request_sync(
+    client: httpx.Client,
+    method: str,
+    url: str,
+    target_id: int,
+    dry_run: Optional[bool] = None,
     max_retries: int = 3,
     base_delay: float = 1.0,
     follow_redirects: bool = False,
+    manual_follow_redirects: bool = False,
     **kwargs,
-):
-    """Convenience wrapper that creates a client when one is not supplied.
+) -> httpx.Response:
+    """Sync wrapper of secure_request – supports pure-sync tools.
 
-    The underlying implementation delegates to :func:`secure_request` which
-    handles all security checks.
+    SSRF protection, scope validation, dry-run and retry semantics are
+    replicated from ``secure_request`` but run synchronously.
     """
-    owns_client = client is None
-    if owns_client:
-        client = get_client()
+    if target_id is None:
+        raise ValueError(
+            "SCOPE_VALIDATION_REQUIRED: target_id must be provided for all requests. "
+            "Use add_target() to register a target before making requests."
+        )
+    validate_scope_or_fail(target_id, url)
 
-    async def _inner():
-        return await secure_request(
-            client=client,
-            method=method,
-            url=url,
-            target_id=target_id,
-            dry_run=dry_run,
-            max_retries=max_retries,
-            base_delay=base_delay,
-            follow_redirects=follow_redirects,
-            **kwargs,
+    if dry_run is None:
+        dry_run = DRY_RUN
+    if dry_run:
+        logger.info(f"[DRY RUN] {method.upper()} {url}")
+        return httpx.Response(
+            200,
+            text="[DRY RUN] Request not executed",
+            request=httpx.Request(method, url),
         )
 
-    async def _wrapped():
+    def _do_request() -> httpx.Response:
+        hostname = urlparse(url).hostname
+        if hostname:
+            _resolve_and_validate_sync(hostname)
+        response = client.request(method, url, follow_redirects=follow_redirects, **kwargs)
+        
+        # Manual redirect following with scope validation if requested
+        if manual_follow_redirects and not follow_redirects:
+            return _follow_redirects_safely_sync(
+                client, method, url, target_id, response, **kwargs
+            )
+        
+        return response
+
+    attempt = 0
+    while True:
         try:
-            return await _inner()
-        finally:
-            if owns_client:
-                await client.aclose()
+            return _do_request()
+        except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+            if attempt >= max_retries:
+                raise
+            time.sleep(base_delay * (2 ** attempt))
+            attempt += 1
 
-    return _wrapped()
+
+def get_sync_client(**overrides) -> httpx.Client:
+    """Synchronous client factory for pure-sync tools (cloud_testing, git_testing, etc.)."""
+    defaults = {
+        "timeout": DEFAULT_TIMEOUT,
+        "verify": VERIFY_SSL,
+        "headers": {"User-Agent": USER_AGENT},
+        "follow_redirects": False,
+    }
+    if "headers" in overrides:
+        defaults["headers"].update(overrides.pop("headers"))
+    defaults.update(overrides)
+    return httpx.Client(**defaults)
 
 
-def get_client(**overrides) -> httpx.AsyncClient:
+def get_async_client(**overrides) -> httpx.AsyncClient:
+    """Asynchronous client factory for async tools (hunter, etc.)."""
     defaults = {
         "timeout": DEFAULT_TIMEOUT,
         "verify": VERIFY_SSL,
@@ -207,12 +357,21 @@ def get_client(**overrides) -> httpx.AsyncClient:
     return httpx.AsyncClient(**defaults)
 
 
+# Backward compatibility alias for existing async tools
+get_client = get_async_client  # alias: async tools use this
+
+
 async def delay() -> None:
     if REQUEST_DELAY > 0:
         await asyncio.sleep(REQUEST_DELAY)
 
 
-# Compatibility helpers for tests and existing code
+def delay_sync() -> None:
+    if REQUEST_DELAY > 0:
+        time.sleep(REQUEST_DELAY)
+
+
+# Compatibility helpers
 
 def validate_scope(*args, **kwargs):
     """Alias for ``validate_scope_or_fail`` – kept for backward compatibility."""
@@ -231,6 +390,15 @@ async def assert_safe_target(url: str) -> None:
         raise SSRFBlockedError("URL does not contain a hostname")
 
 
-async def tls_connect(hostname: str, port: int = 443):
+def assert_safe_target_sync(url: str) -> None:
+    """Sync version of ``assert_safe_target``."""
+    hostname = urlparse(url).hostname
+    if hostname:
+        _resolve_and_validate_sync(hostname)
+    else:
+        raise SSRFBlockedError("URL does not contain a hostname")
+
+
+def tls_connect(hostname: str, port: int = 443):
     """Simple TLS connect stub for tests – returns a tuple describing TLS version."""
     return "TLSv1.3", ("TLS_AES_256_GCM_SHA384",), None

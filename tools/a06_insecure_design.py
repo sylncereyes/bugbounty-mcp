@@ -20,9 +20,9 @@ async def rate_limit_check(url: str, target_id: int, method: str = "POST", data:
         for i in range(requests_count):
             try:
                 if method.upper() == "POST":
-                    res = await secure_request(client, "POST", url, json=data)
+                    res = await secure_request(client, "POST", url, target_id=target_id, json=data)
                 else:
-                    res = await secure_request(client, "GET", url)
+                    res = await secure_request(client, "GET", url, target_id=target_id)
                     
                 status_codes.append(res.status_code)
                 
@@ -73,7 +73,7 @@ async def business_logic_price_test(checkout_url: str, target_id: int, product_u
     
     async with get_client() as client:
         try:
-            res = await secure_request(client, "POST", checkout_url, json=test_params)
+            res = await secure_request(client, "POST", checkout_url, target_id=target_id, json=test_params)
             # Check if request succeeded and did not reject negative price
             if res.status_code in [200, 201] and "error" not in res.text.lower():
                 vulnerable = True
@@ -115,7 +115,7 @@ async def captcha_bypass_check(url: str, target_id: int, form_data: dict = None)
     # Check form HTML for captcha integration
     async with get_client() as client:
         try:
-            res = await secure_request(client, "GET", url)
+            res = await secure_request(client, "GET", url, target_id=target_id)
             body = res.text
             if any(k in body for k in ["g-recaptcha", "hcaptcha", "recaptcha"]):
                 has_captcha = True
@@ -124,7 +124,7 @@ async def captcha_bypass_check(url: str, target_id: int, form_data: dict = None)
             if has_captcha and form_data:
                 # Remove captcha parameter
                 cleaned_data = {k: v for k, v in form_data.items() if "captcha" not in k.lower() and "response" not in k.lower()}
-                post_res = await secure_request(client, "POST", url, data=cleaned_data)
+                post_res = await secure_request(client, "POST", url, target_id=target_id, data=cleaned_data)
                 if post_res.status_code in [200, 302] and "invalid captcha" not in post_res.text.lower():
                     bypassable = True
                     bypass_methods.append("Removal of captcha param")
@@ -161,9 +161,9 @@ async def race_condition_test(url: str, target_id: int, method: str = "POST", da
     async def send_req(client):
         try:
             if method.upper() == "POST":
-                res = await secure_request(client, "POST", url, json=data)
+                res = await secure_request(client, "POST", url, target_id=target_id, json=data)
             else:
-                res = await secure_request(client, "GET", url)
+                res = await secure_request(client, "GET", url, target_id=target_id)
             return res.status_code, res.text
         except Exception as e:
             return 999, str(e)
@@ -214,7 +214,7 @@ async def password_policy_check(register_url: str, target_id: int, login_url: st
             try:
                 # Mock register structure
                 data = {"username": "policy_test_user", "email": "test@example.com", "password": p}
-                res = await secure_request(client, "POST", register_url, json=data)
+                res = await secure_request(client, "POST", register_url, target_id=target_id, json=data)
                 if res.status_code in [200, 201] and "error" not in res.text.lower():
                     accepted.append(p)
             except Exception as e:
@@ -254,7 +254,7 @@ async def mfa_bypass_check(login_url: str, target_id: int, mfa_url: str = None, 
         # Step 1: Try direct access to mfa_url if provided without any auth
         if mfa_url:
             try:
-                res_direct = await secure_request(client, "GET", mfa_url)
+                res_direct = await secure_request(client, "GET", mfa_url, target_id=target_id)
                 if res_direct.status_code == 200 and "login" not in res_direct.text.lower():
                     vulnerable = True
                     bypass_methods.append("Direct GET access to MFA/dashboard endpoint")
@@ -265,9 +265,9 @@ async def mfa_bypass_check(login_url: str, target_id: int, mfa_url: str = None, 
         # Step 2: Try normal login, then access protected endpoint directly (if credentials supplied)
         if username and password and mfa_url:
             try:
-                res_login = await secure_request(client, "POST", login_url, json={"username": username, "password": password})
+                res_login = await secure_request(client, "POST", login_url, target_id=target_id, json={"username": username, "password": password})
                 if res_login.status_code in [200, 302]:
-                    res_mfa = await secure_request(client, "GET", mfa_url)
+                    res_mfa = await secure_request(client, "GET", mfa_url, target_id=target_id)
                     if res_mfa.status_code == 200 and "mfa" not in res_mfa.text.lower():
                         vulnerable = True
                         bypass_methods.append("Step bypass (login followed by direct GET access to mfa_url)")
@@ -308,7 +308,7 @@ async def account_enumeration_test(login_url: str, target_id: int, register_url:
     async with get_client() as client:
         for u in usernames:
             try:
-                res = await secure_request(client, "POST", login_url, json={"username": u, "password": "wrongpassword123"})
+                res = await secure_request(client, "POST", login_url, target_id=target_id, json={"username": u, "password": "wrongpassword123"})
                 msgs.append((u, res.status_code, res.text[:500]))
             except Exception as e:
                 logger.debug("Account enumeration test failed for '%s': %s", u, e)

@@ -1,4 +1,4 @@
-"""StealthVision-MCP - Advanced Port Scanner Module"""
+"""Advanced Port Scanner Module"""
 import socket
 import concurrent.futures
 import logging

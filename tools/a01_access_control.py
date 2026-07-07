@@ -34,11 +34,11 @@ async def idor_test(url: str, id_param: str, test_ids: list, target_id: int, met
                 baseline_params[id_param] = "99999999"
 
             if method.upper() == "GET":
-                res_base = await secure_request(client, "GET", baseline_url, headers=headers, params=baseline_params)
+                res_base = await secure_request(client, "GET", baseline_url, target_id=target_id, headers=headers, params=baseline_params)
             elif method.upper() == "POST":
-                res_base = await secure_request(client, "POST", baseline_url, headers=headers, data={id_param: "99999999"})
+                res_base = await secure_request(client, "POST", baseline_url, target_id=target_id, headers=headers, data={id_param: "99999999"})
             else:
-                res_base = await secure_request(client, method, baseline_url, headers=headers, params=baseline_params)
+                res_base = await secure_request(client, method, baseline_url, target_id=target_id, headers=headers, params=baseline_params)
             baseline_status = res_base.status_code
         except Exception:
             pass
@@ -55,11 +55,11 @@ async def idor_test(url: str, id_param: str, test_ids: list, target_id: int, met
 
             try:
                 if method.upper() == "GET":
-                    res = await secure_request(client, "GET", current_url, headers=headers, params=params)
+                    res = await secure_request(client, "GET", current_url, target_id=target_id, headers=headers, params=params)
                 elif method.upper() == "POST":
-                    res = await secure_request(client, "POST", current_url, headers=headers, data={id_param: str(tid)})
+                    res = await secure_request(client, "POST", current_url, target_id=target_id, headers=headers, data={id_param: str(tid)})
                 else:
-                    res = await secure_request(client, method, current_url, headers=headers, params=params)
+                    res = await secure_request(client, method, current_url, target_id=target_id, headers=headers, params=params)
 
                 if baseline_status is not None:
                     suspicious = res.status_code == 200 and baseline_status != 200 and len(res.text) > 100
@@ -117,10 +117,10 @@ async def cors_misconfiguration_check(url: str, target_id: int) -> dict:
             await delay()
             headers = {"Origin": origin}
             try:
-                res = await client.options(url, headers=headers)
+                res = await secure_request(client, "OPTIONS", url, target_id=target_id, headers=headers)
                 # Fallback to GET if OPTIONS not allowed
                 if res.status_code == 405 or res.status_code == 404:
-                    res = await secure_request(client, "GET", url, headers=headers)
+                    res = await secure_request(client, "GET", url, target_id=target_id, headers=headers)
                 
                 acao = res.headers.get("Access-Control-Allow-Origin", "")
                 acac = res.headers.get("Access-Control-Allow-Credentials", "")
@@ -177,7 +177,7 @@ async def path_traversal_test(url: str, param: str, target_id: int) -> dict:
             await delay()
             params = {param: payload}
             try:
-                res = await secure_request(client, "GET", url, params=params)
+                res = await secure_request(client, "GET", url, target_id=target_id, params=params)
                 if "root:x:" in res.text or "[extensions]" in res.text or "[fonts]" in res.text:
                     vulnerable = True
                     successful_payloads.append(payload)
@@ -221,7 +221,7 @@ async def http_methods_check(url: str, target_id: int) -> dict:
         for m in methods:
             await delay()
             try:
-                res = await secure_request(client, m, url)
+                res = await secure_request(client, m, url, target_id=target_id)
                 if res.status_code < 400:
                     allowed.append(m)
                     if m in ["TRACE", "PUT", "DELETE"]:
@@ -271,7 +271,7 @@ async def forced_browsing_scan(base_url: str, target_id: int, wordlist_type: str
             await delay()
             target = base_url.rstrip("/") + p
             try:
-                res = await secure_request(client, "GET", target)
+                res = await secure_request(client, "GET", target, target_id=target_id)
                 if res.status_code in [200, 301, 302, 401, 403]:
                     item = {
                         "path": p,
@@ -324,7 +324,7 @@ async def access_control_bypass_test(url: str, target_id: int, bypass_header: st
     async with get_client() as client:
         # Get baseline response without bypass headers
         try:
-            baseline = await secure_request(client, "GET", url)
+            baseline = await secure_request(client, "GET", url, target_id=target_id)
             baseline_status = baseline.status_code
             baseline_body = baseline.text[:500]
         except Exception as e:
@@ -333,7 +333,7 @@ async def access_control_bypass_test(url: str, target_id: int, bypass_header: st
         for h_name, h_val in headers_to_test.items():
             await delay()
             try:
-                res = await secure_request(client, "GET", url, headers={h_name: h_val})
+                res = await secure_request(client, "GET", url, target_id=target_id, headers={h_name: h_val})
                 # Only flag bypass if baseline was blocked but bypass succeeded
                 if baseline_status in [401, 403] and res.status_code == 200 and "unauthorized" not in res.text.lower():
                     bypassed = True
@@ -377,7 +377,7 @@ async def privilege_escalation_test(url: str, low_priv_cookie: str, high_priv_en
     async with get_client() as client:
         # Baseline: check if endpoint is publicly accessible without any authentication
         try:
-            public_res = await secure_request(client, "GET", high_priv_endpoint)
+            public_res = await secure_request(client, "GET", high_priv_endpoint, target_id=target_id)
             if public_res.status_code == 200 and "access denied" not in public_res.text.lower():
                 # Endpoint is publicly accessible, not a privilege escalation issue
                 return {
@@ -389,7 +389,7 @@ async def privilege_escalation_test(url: str, low_priv_cookie: str, high_priv_en
             logger.debug("Public baseline request failed: %s", e)
 
         try:
-            res = await secure_request(client, "GET", high_priv_endpoint, headers=headers)
+            res = await secure_request(client, "GET", high_priv_endpoint, target_id=target_id, headers=headers)
             if res.status_code == 200 and "access denied" not in res.text.lower():
                 escalated = True
         except Exception as e:

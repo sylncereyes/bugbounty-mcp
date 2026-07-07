@@ -23,7 +23,7 @@ async def log_injection_test(url: str, target_id: int, params: dict = None) -> d
                 test_params = (params or {"q": "search"}).copy()
                 test_params[p_name] = p
                 try:
-                    res = await secure_request(client, "GET", url, params=test_params)
+                    res = await secure_request(client, "GET", url, target_id=target_id, params=test_params)
                     # Log injection is verified by checking server log files.
                     # Since we can't read internal logs directly, we flag reflection as a potential risk.
                     if p in res.text:
@@ -66,7 +66,7 @@ async def error_disclosure_check(url: str, target_id: int, trigger_methods: list
     
     async with get_client() as client:
         try:
-            res = await secure_request(client, "GET", url, params=test_params)
+            res = await secure_request(client, "GET", url, target_id=target_id, params=test_params)
             body = res.text
             
             # Framework traces
@@ -143,7 +143,7 @@ async def check_debug_endpoints(base_url: str, target_id: int) -> dict:
         for ep in endpoints:
             target = base_url.rstrip("/") + ep
             try:
-                res = await secure_request(client, "GET", target)
+                res = await secure_request(client, "GET", target, target_id=target_id)
                 if res.status_code == 200:
                     found.append({
                         "path": ep,

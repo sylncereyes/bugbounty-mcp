@@ -1,4 +1,4 @@
-"""StealthVision-MCP - Impact Scoring & Panic Factor Module"""
+"""Impact Scoring & Panic Factor Module"""
 import logging
 from mcp_instance import mcp
 

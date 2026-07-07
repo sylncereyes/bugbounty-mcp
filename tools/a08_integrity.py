@@ -22,7 +22,7 @@ async def check_insecure_deserialization(url: str, target_id: int, params: dict 
     
     async with get_client() as client:
         try:
-            res = await secure_request(client, "GET", url)
+            res = await secure_request(client, "GET", url, target_id=target_id)
             cookies = res.headers.get_list("Set-Cookie")
             for c in cookies:
                 cookie_val = c.split(";")[0].split("=", 1)
@@ -82,7 +82,7 @@ async def cache_poisoning_test(url: str, target_id: int) -> dict:
     async with get_client() as client:
         for h, val in headers_to_try.items():
             try:
-                res = await secure_request(client, "GET", url, headers={h: val})
+                res = await secure_request(client, "GET", url, target_id=target_id, headers={h: val})
                 if val in res.text or val in str(res.headers):
                     vulnerable = True
                     poisonable_headers.append(h)
@@ -132,9 +132,9 @@ async def parameter_tampering_test(url: str, params: dict, target_id: int, metho
             
             try:
                 if method.upper() == "GET":
-                    res = await secure_request(client, "GET", url, params=test_params)
+                    res = await secure_request(client, "GET", url, target_id=target_id, params=test_params)
                 else:
-                    res = await secure_request(client, "POST", url, data=test_params)
+                    res = await secure_request(client, "POST", url, target_id=target_id, data=test_params)
                     
                 # If we get HTTP 200 without error indication, indicate tampered parameter accepted
                 if res.status_code == 200 and "error" not in res.text.lower() and "unauthorized" not in res.text.lower():
@@ -250,9 +250,9 @@ async def mass_assignment_test(url: str, target_id: int, method: str = "POST", d
     async with get_client() as client:
         try:
             if method.upper() == "POST":
-                res = await secure_request(client, "POST", url, json=merged_data)
+                res = await secure_request(client, "POST", url, target_id=target_id, json=merged_data)
             else:
-                res = await secure_request(client, "PUT", url, json=merged_data)
+                res = await secure_request(client, "PUT", url, target_id=target_id, json=merged_data)
                 
             body = res.text
             # If privileged fields are reflected back as true/admin, indicate potential mass assignment
@@ -302,7 +302,7 @@ async def http_request_smuggling_check(url: str, target_id: int) -> dict:
     
     async with get_client() as client:
         try:
-            res = await secure_request(client, "POST", url, headers=headers, content="0\r\n\r\n", follow_redirects=False)
+            res = await secure_request(client, "POST", url, target_id=target_id, headers=headers, content="0\r\n\r\n", follow_redirects=False)
             tests.append({"type": "CL.TE", "response": res.status_code, "timeout": False})
         except httpx.ReadTimeout:
             potentially_vulnerable = True

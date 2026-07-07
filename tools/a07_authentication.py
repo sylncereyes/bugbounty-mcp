@@ -16,8 +16,10 @@ async def brute_force_protection_check(login_url: str, target_id: int, username_
     async with get_client() as client:
         for i in range(10):
             try:
-                res = await secure_request(client, "POST", 
-                    login_url,
+                res = await secure_request(
+                    client, "POST", 
+                    login_url, 
+                    target_id=target_id,
                     json={username_field: test_username, password_field: f"wrongpass_{i}"}
                 )
                 status_codes.append(res.status_code)
@@ -67,8 +69,10 @@ async def credential_stuffing_simulation(login_url: str, target_id: int, usernam
     async with get_client() as client:
         for user, pwd in credentials:
             try:
-                res = await secure_request(client, "POST", 
-                    login_url,
+                res = await secure_request(
+                    client, "POST", 
+                    login_url, 
+                    target_id=target_id,
                     json={username_field: user, password_field: pwd}
                 )
                 # Successful auth usually sets a session cookie or redirects
@@ -110,7 +114,7 @@ async def session_management_check(url: str, target_id: int, login_url: str = No
     
     async with get_client() as client:
         try:
-            res = await secure_request(client, "GET", url)
+            res = await secure_request(client, "GET", url, target_id=target_id)
             cookies = res.headers.get_list("Set-Cookie")
             for c in cookies:
                 if any(sess in c.lower() for sess in ["session", "token", "id", "jwt"]):
@@ -168,13 +172,13 @@ async def jwt_attack_test(url: str, token: str, target_id: int) -> dict:
     none_bypass = False
     
     # 1. Test None algorithm
-    # Header: {"alg":"none","typ":"JWT"} -> eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0
-    none_header = "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0"
+    # Header: {"alg":"none","typ":"JWT"} -> eyJhbG...UIn0
+    none_header = "eyJhbG...UIn0"
     none_token = f"{none_header}.{parts[1]}."
     
     async with get_client() as client:
         try:
-            res = await secure_request(client, "GET", url, headers={"Authorization": f"Bearer {none_token}"})
+            res = await secure_request(client, "GET", url, target_id=target_id, headers={"Authorization": f"Bearer {none_token}"})
             if res.status_code == 200 and "unauthorized" not in res.text.lower():
                 none_bypass = True
         except Exception as e:
@@ -211,10 +215,12 @@ async def password_reset_test(reset_url: str, target_id: int, email: str = "test
     injected = False
     async with get_client() as client:
         try:
-            res = await secure_request(client, "POST", 
+            res = await secure_request(
+                client, "POST", 
                 reset_url,
                 json={"email": email},
-                headers={"Host": "evil.com", "X-Forwarded-Host": "evil.com"}
+                headers={"Host": "evil.com", "X-Forwarded-Host": "evil.com"},
+                target_id=target_id
             )
             # If application sends reset email referencing the host header, it's vulnerable.
             # We check if evil.com is echoed back in the response page first
@@ -259,7 +265,7 @@ async def oauth_misconfiguration_check(authorization_url: str, target_id: int, c
         test_url = authorization_url.replace(redirect_uri, evil_uri)
         async with get_client() as client:
             try:
-                res = await secure_request(client, "GET", test_url)
+                res = await secure_request(client, "GET", test_url, target_id=target_id)
                 if res.status_code in [302, 301] and res.headers.get("Location", "").startswith(evil_uri):
                     issues.append("OAuth Open Redirect bypass via redirect_uri parameter")
             except Exception as e:
@@ -297,7 +303,7 @@ async def check_plaintext_credentials(url: str, target_id: int) -> dict:
     # We inspect headers for Basic Authentication
     async with get_client() as client:
         try:
-            res = await secure_request(client, "GET", url)
+            res = await secure_request(client, "GET", url, target_id=target_id)
             auth_header = res.headers.get("WWW-Authenticate", "")
             if "basic" in auth_header.lower():
                 basic_auth = True

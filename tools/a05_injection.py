@@ -145,9 +145,9 @@ async def xss_test(url: str, params: dict, target_id: int, method: str = "GET") 
                 try:
                     await delay()
                     if method.upper() == "GET":
-                        res = await client.get(url, params=test_params)
+                        res = await secure_request(client, "GET", url, target_id=target_id, params=test_params)
                     else:
-                        res = await client.post(url, data=test_params)
+                        res = await secure_request(client, "POST", url, target_id=target_id, data=test_params)
                         
                     if payload in res.text:
                         vulnerable = True
@@ -207,9 +207,9 @@ async def command_injection_test(url: str, params: dict, target_id: int, method:
                     await delay()
                     start = _time.monotonic()
                     if method.upper() == "GET":
-                        res = await client.get(url, params=test_params)
+                        res = await secure_request(client, "GET", url, target_id=target_id, params=test_params)
                     else:
-                        res = await client.post(url, data=test_params)
+                        res = await secure_request(client, "POST", url, target_id=target_id, data=test_params)
                     elapsed = _time.monotonic() - start
                     
                     body = res.text.lower()
@@ -279,9 +279,9 @@ async def ssrf_test(url: str, params: dict, target_id: int, ssrf_payload: str = 
                 try:
                     await delay()
                     if method.upper() == "GET":
-                        res = await client.get(url, params=test_params)
+                        res = await secure_request(client, "GET", url, target_id=target_id, params=test_params)
                     else:
-                        res = await client.post(url, data=test_params)
+                        res = await secure_request(client, "POST", url, target_id=target_id, data=test_params)
                         
                     body = res.text
                     evidence = ""
@@ -342,9 +342,9 @@ async def ssti_test(url: str, params: dict, target_id: int, method: str = "GET")
                 try:
                     await delay()
                     if method.upper() == "GET":
-                        res = await client.get(url, params=test_params)
+                        res = await secure_request(client, "GET", url, target_id=target_id, params=test_params)
                     else:
-                        res = await client.post(url, data=test_params)
+                        res = await secure_request(client, "POST", url, target_id=target_id, data=test_params)
                         
                     if p["expected"] in res.text and p["payload"] not in res.text:
                         vulnerable = True
@@ -394,7 +394,7 @@ async def xxe_test(url: str, target_id: int, content_type: str = "application/xm
     
     async with get_client() as client:
         try:
-            res = await client.post(url, content=payload, headers={"Content-Type": content_type})
+            res = await secure_request(client, "POST", url, target_id=target_id, content=payload, headers={"Content-Type": content_type})
             if "root:x:" in res.text:
                 vulnerable = True
                 evidence = "Passwd file contents returned in response body"
@@ -431,7 +431,7 @@ async def host_header_injection_test(url: str, target_id: int) -> dict:
     async with get_client() as client:
         try:
             # Send evil.com host header
-            res = await client.get(url, headers={"Host": "evil.com"})
+            res = await secure_request(client, "GET", url, target_id=target_id, headers={"Host": "evil.com"})
             if "evil.com" in res.text or res.headers.get("Location", "").startswith("https://evil.com"):
                 vulnerable = True
                 reflected_in.append("Response Body/Header Redirect")
@@ -460,11 +460,9 @@ async def host_header_injection_test(url: str, target_id: int) -> dict:
 @mcp.tool()
 async def crlf_injection_test(url: str, target_id: int, params: dict = None) -> dict:
     """Checks for CRLF injection leading to header injection or response splitting."""
-    if not is_in_scope(target_id, url):
-        return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "vulnerable": False}
     payloads = [
         "%0d%0aSet-Cookie:crlfinjection=1",
-        "\r\nSet-Cookie:crlfinjection=1"
+        "\\r\\nSet-Cookie:crlfinjection=1"
     ]
     vulnerable = False
     vulnerable_vectors = []
@@ -475,7 +473,7 @@ async def crlf_injection_test(url: str, target_id: int, params: dict = None) -> 
             target = f"{url.rstrip('/')}/{p}"
             try:
                 await delay()
-                res = await client.get(target)
+                res = await secure_request(client, "GET", target, target_id=target_id)
                 if res.headers.get("Set-Cookie") and "crlfinjection" in res.headers.get("Set-Cookie"):
                     vulnerable = True
                     vulnerable_vectors.append("Path Injection")
@@ -526,14 +524,14 @@ async def nosql_injection_test(url: str, params: dict, target_id: int) -> dict:
         # Establish baseline lengths to avoid false positives
         baseline_post_len = None
         try:
-            res_base_post = await client.post(url, json=params)
+            res_base_post = await secure_request(client, "POST", url, target_id=target_id, json=params)
             baseline_post_len = len(res_base_post.text)
         except Exception:
             pass
 
         baseline_get_len = None
         try:
-            res_base_get = await client.get(url, params=params)
+            res_base_get = await secure_request(client, "GET", url, target_id=target_id, params=params)
             baseline_get_len = len(res_base_get.text)
         except Exception:
             pass
@@ -545,7 +543,7 @@ async def nosql_injection_test(url: str, params: dict, target_id: int) -> dict:
                 test_data[p_name] = np["payload"]
                 try:
                     await delay()
-                    res = await client.post(url, json=test_data)
+                    res = await secure_request(client, "POST", url, target_id=target_id, json=test_data)
                     significant_diff = baseline_post_len is not None and abs(len(res.text) - baseline_post_len) > 200
                     if res.status_code == 200 and significant_diff:
                         vulnerable = True
@@ -565,7 +563,7 @@ async def nosql_injection_test(url: str, params: dict, target_id: int) -> dict:
                 test_params[p_name] = sp["payload"]
                 try:
                     await delay()
-                    res = await client.get(url, params=test_params)
+                    res = await secure_request(client, "GET", url, target_id=target_id, params=test_params)
                     body = res.text.lower()
                     significant_diff = baseline_get_len is not None and abs(len(res.text) - baseline_get_len) > 200
                     if res.status_code == 200 and "error" not in body and significant_diff:

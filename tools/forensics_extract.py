@@ -1,4 +1,4 @@
-"""StealthVision-MCP - Forensics Helper Module"""
+"""Forensics Helper Module"""
 import base64
 import re
 from mcp_instance import mcp

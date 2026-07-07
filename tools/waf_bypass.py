@@ -1,7 +1,9 @@
-"""StealthVision-MCP - WAF Bypass Automation Module"""
+"""WAF Bypass Automation Module"""
 import httpx
 import logging
 from mcp_instance import mcp
+from tools.http_utils import secure_request_sync, get_sync_client
+from tools.db import is_in_scope
 
 logger = logging.getLogger("stealthvision")
 from config import USER_AGENT, DEFAULT_TIMEOUT, get_random_user_agent
@@ -30,11 +32,19 @@ WAF_BYPASS_PAYLOADS = {
 }
 
 @mcp.tool()
-def waf_detect(url: str) -> dict:
+def waf_detect(url: str, target_id: int) -> dict:
     """Detect WAF presence on target URL."""
+    if not is_in_scope(target_id, url):
+        return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "success": False}
+    
     try:
-        client = httpx.Client(timeout=DEFAULT_TIMEOUT, headers={"User-Agent": get_random_user_agent()})
-        r = client.get(url)
+        client = get_sync_client()
+        r = secure_request_sync(
+            client, "GET",
+            url,
+            target_id,
+            headers={"User-Agent": get_random_user_agent()}
+        )
         
         detected_waf = []
         for waf_name, signatures in WAF_SIGNATURES.items():
@@ -46,9 +56,11 @@ def waf_detect(url: str) -> dict:
         return {"detected": detected_waf, "count": len(detected_waf), "response_code": r.status_code, "success": True}
     except Exception as e:
         return {"error": str(e), "success": False}
+    finally:
+        client.close()
 
 @mcp.tool()
-def waf_bypass_payload(vuln_type: str = "sql_injection") -> dict:
+def waf_bypass_payload(vuln_type: str = "sql_injection", target_id: int = 1) -> dict:
     """Get WAF bypass payloads for testing."""
     payloads = WAF_BYPASS_PAYLOADS.get(vuln_type, WAF_BYPASS_PAYLOADS["sql_injection"])
     return {"payloads": payloads, "count": len(payloads), "success": True}

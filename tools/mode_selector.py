@@ -1,4 +1,4 @@
-"""StealthVision-MCP - Mode Selector for Multi-Purpose Security Operations
+"""Mode Selector for Multi-Purpose Security Operations
 Allows switching between Bug Hunter, Pentester, and CTF Player modes.
 """
 import json
@@ -62,7 +62,7 @@ MODE_TOOLSETS = {
 @mcp.tool()
 def mode(mode_name: str) -> dict:
     """
-    Switch StealthVision-MCP to specific operational mode.
+    Switch AGY-MCP to specific operational mode.
     
     Args:
         mode_name: One of "hunter", "pentest", or "ctf"

@@ -1,35 +1,35 @@
-"""StealthVision-MCP - API Security Testing Module
+"""API Security Testing Module
 Specialized testing for REST/GraphQL/gRPC APIs beyond OWASP API Top 10.
 """
 import json
 import httpx
 from mcp_instance import mcp
+from tools.http_utils import secure_request_sync, get_sync_client
+from tools.db import is_in_scope
 import logging
 
 logger = logging.getLogger("stealthvision")
 
 
-def _get_client():
-    """Create httpx client with defaults"""
-    return httpx.Client(
-        timeout=30.0,
-        verify=True,
-        headers={"User-Agent": "StealthVision/1.0"},
-        follow_redirects=False
-    )
-
-
 @mcp.tool()
-def api_security_scan(base_url: str, api_type: str = "auto", endpoints: list = None) -> dict:
+def api_security_scan(base_url: str, target_id: int, api_type: str = "auto", endpoints: list = None) -> dict:
     """API security scanner for REST/GraphQL endpoints."""
-    if not base_url.startswith(('http://', 'https://')):
-        return {"error": "Invalid URL - must include http:// or https://"}
+    if not is_in_scope(target_id, base_url):
+        return {"error": f"URL {base_url} is out of scope for target {target_id}. Scan aborted.", "findings_count": 0, "findings": []}
     
-    client = _get_client()
+    if not base_url.startswith(('http://', 'https://')):
+        return {"error": "Invalid URL - must include http:// or https://", "findings_count": 0, "findings": []}
+    
     findings = []
+    client = get_sync_client()
     
     try:
-        resp = client.get(f"{base_url}/", timeout=10.0)
+        resp = secure_request_sync(
+            client, "GET",
+            f"{base_url}/",
+            target_id,
+            timeout=10.0
+        )
         if resp.status_code in [200, 401, 403]:
             findings.append({
                 "type": "endpoint_accessible",
@@ -39,6 +39,8 @@ def api_security_scan(base_url: str, api_type: str = "auto", endpoints: list = N
             })
     except Exception as e:
         logger.debug(f"API scan error: {e}")
+    finally:
+        client.close()
     
     return {
         "base_url": base_url,
@@ -49,17 +51,26 @@ def api_security_scan(base_url: str, api_type: str = "auto", endpoints: list = N
 
 
 @mcp.tool()
-def graphql_introspection_check(url: str) -> dict:
+def graphql_introspection_check(url: str, target_id: int) -> dict:
     """Check GraphQL endpoint for introspection."""
-    if not url.startswith(('http://', 'https://')):
-        return {"error": "Invalid URL"}
+    if not is_in_scope(target_id, url):
+        return {"error": f"URL {url} is out of scope for target {target_id}. Scan aborted.", "introspection_enabled": False, "schema_leaked": False}
     
-    client = _get_client()
+    if not url.startswith(('http://', 'https://')):
+        return {"error": "Invalid URL", "introspection_enabled": False, "schema_leaked": False}
+    
+    client = get_sync_client()
     
     introspection_query = {"query": "{__schema{types{name,fields{name}}}"}
     
     try:
-        resp = client.post(url, json=introspection_query, timeout=10.0)
+        resp = secure_request_sync(
+            client, "POST",
+            url,
+            target_id,
+            json=introspection_query,
+            timeout=10.0
+        )
         data = resp.json()
         
         if 'data' in data and '__schema' in data.get('data', {}):
@@ -68,7 +79,9 @@ def graphql_introspection_check(url: str) -> dict:
                 "schema_leaked": True,
                 "finding": "CRITICAL: GraphQL introspection enabled - schema exposed",
             }
-    except:
-        pass
+    except Exception as e:
+        logger.debug(f"GraphQL introspection error: {e}")
+    finally:
+        client.close()
     
     return {"introspection_enabled": False, "schema_leaked": False}

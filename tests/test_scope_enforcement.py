@@ -15,6 +15,7 @@ import ast
 import re
 import os
 import sys
+from urllib.parse import urljoin
 from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path.insert(0, '/home/kali/bugbounty-mcp')
@@ -138,10 +139,10 @@ class TestRuntimeBehavior:
         1. Return error dict (fail-closed)
         2. NOT make any HTTP requests
         """
-        from tools.a01_access_control import security_headers_check
+        from tools.a02_misconfiguration import security_headers_check
         
         async def run_test():
-            with patch('tools.a01_access_control.secure_request', new_callable=AsyncMock) as mock_req:
+            with patch('tools.a02_misconfiguration.secure_request', new_callable=AsyncMock) as mock_req:
                 result = await security_headers_check('https://evil.com', target_id=self.target_id)
                 return result, mock_req
         
@@ -155,10 +156,10 @@ class TestRuntimeBehavior:
 
     def test_in_scope_allows_http_call(self):
         """When URL is in-scope, HTTP request should be made."""
-        from tools.a01_access_control import security_headers_check
+        from tools.a02_misconfiguration import security_headers_check
         
         async def run_test():
-            with patch('tools.a01_access_control.secure_request', new_callable=AsyncMock) as mock_req:
+            with patch('tools.a02_misconfiguration.secure_request', new_callable=AsyncMock) as mock_req:
                 mock_req.return_value = MagicMock(status_code=200, text="OK", headers={})
                 await security_headers_check('https://api.example.com', target_id=self.target_id)
                 return mock_req
@@ -179,6 +180,13 @@ class TestRedirectGuard:
     EXPECTED FAILURE: This test FAILS until redirect guard is implemented.
     """
     
+    @pytest.mark.xfail(
+        reason="security_headers_check tidak melakukan manual redirect-following, "
+               "sehingga test ini tidak benar-benar menguji redirect-scope-guard. "
+               "Tidak ada logic 3xx/Location handling di http_utils.py. "
+               "xfail sampai redirect guard sungguhan dibangun di secure_request().",
+        strict=False,
+    )
     def test_redirect_to_out_of_scope_should_fail(self):
         """
         When a request redirects to an out-of-scope URL, the tool should:
@@ -188,10 +196,10 @@ class TestRedirectGuard:
         
         Currently this test FAILS because redirect guard is not implemented.
         """
-        from tools.a01_access_control import security_headers_check
+        from tools.a02_misconfiguration import security_headers_check
         
         async def run_test():
-            with patch('tools.a01_access_control.secure_request', new_callable=AsyncMock) as mock_req:
+            with patch('tools.a02_misconfiguration.secure_request', new_callable=AsyncMock) as mock_req:
                 # Setup: first call returns 302 to evil.com, second call is what we want to prevent
                 mock_req.side_effect = [
                     MagicMock(status_code=302, headers={'Location': 'https://evil.com/steal'}),
@@ -207,6 +215,55 @@ class TestRedirectGuard:
         # (once for initial, once for redirect following)
         # If implemented, it should be called only once (stops at 302)
         assert call_count == 1, f"VULNERABILITY: Request followed redirect to out-of-scope domain. Call count: {call_count}"
+
+
+# ============================================================================
+# SECTION 5: Real redirect guard tests (testing secure_request directly)
+# ============================================================================
+
+class TestRedirectGuardReal:
+    """Real tests for redirect scope guard - testing secure_request directly."""
+
+    def setup_method(self):
+        init_db()
+        # Add target with scope for example.com
+        self.target_id = add_target('redirect-test', 'https://example.com', scope=['*.example.com'])
+
+    @pytest.mark.asyncio
+    async def test_manual_redirect_follows_in_scope(self):
+        """Redirect ke domain yang SAMA scope-nya harus berhasil di-follow."""
+        from tools.http_utils import secure_request
+        from unittest.mock import AsyncMock, MagicMock
+        
+        mock_client = AsyncMock()
+        mock_client.request.side_effect = [
+            MagicMock(status_code=302, headers={"Location": "https://example.com/new"}),
+            MagicMock(status_code=200, headers={}, text="OK"),
+        ]
+        res = await secure_request(
+            mock_client, "GET", "https://example.com/old",
+            target_id=self.target_id, dry_run=False, manual_follow_redirects=True,
+        )
+        assert mock_client.request.call_count == 2
+        assert res.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_manual_redirect_blocks_out_of_scope(self):
+        """Redirect ke domain LUAR scope harus di-block, bukan di-follow."""
+        from tools.http_utils import secure_request
+        from unittest.mock import AsyncMock, MagicMock
+        
+        mock_client = AsyncMock()
+        mock_client.request.return_value = MagicMock(
+            status_code=302, headers={"Location": "https://evil.com/steal"}
+        )
+        with pytest.raises(ValueError):  # scope validation harus raise
+            await secure_request(
+                mock_client, "GET", "https://example.com/old",
+                target_id=self.target_id, dry_run=False, manual_follow_redirects=True,
+            )
+        # Pastikan HANYA request awal yang terjadi, TIDAK follow ke evil.com
+        assert mock_client.request.call_count == 1
 
 
 if __name__ == "__main__":

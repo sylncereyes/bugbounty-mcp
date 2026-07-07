@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-StealthVision-MCP - External Tool Wrappers
+External Tool Wrappers
 Wrappers for CLI tools like subfinder, httpx, nuclei, katana to integrate with MCP.
 """
 import asyncio

@@ -177,7 +177,7 @@ async def check_https_redirect(url: str, target_id: int) -> dict:
         
     async with get_client(follow_redirects=False) as client:
         try:
-            res = await secure_request(client, "GET", target_url)
+            res = await secure_request(client, "GET", target_url, target_id=target_id)
             # Check redirect status
             if res.status_code in [301, 302, 307, 308]:
                 location = res.headers.get("Location", "")
@@ -194,7 +194,7 @@ async def check_https_redirect(url: str, target_id: int) -> dict:
     hsts = ""
     async with get_client() as client:
         try:
-            res = await secure_request(client, "GET", https_url)
+            res = await secure_request(client, "GET", https_url, target_id=target_id)
             hsts = res.headers.get("Strict-Transport-Security", "")
             if hsts:
                 hsts_present = True
@@ -243,7 +243,7 @@ async def check_sensitive_data_exposure(url: str, target_id: int) -> dict:
     
     async with get_client() as client:
         try:
-            res = await secure_request(client, "GET", url)
+            res = await secure_request(client, "GET", url, target_id=target_id)
             body = res.text
         except Exception as e:
             return {"error": f"Failed to retrieve page: {str(e)}"}

@@ -1,4 +1,4 @@
-"""StealthVision-MCP RAG (Retrieval-Augmented Generation) Engine
+"""AGY-MCP RAG (Retrieval-Augmented Generation) Engine
 Automatically triggers knowledge base searches when AI conversations detect relevant intent.
 """
 import sqlite3

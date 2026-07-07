@@ -1,4 +1,4 @@
-"""StealthVision-MCP - Bug Bounty Hunter Workflow Orchestration"""
+"""Bug Bounty Hunter Workflow Orchestration"""
 import logging
 from mcp_instance import mcp
 
