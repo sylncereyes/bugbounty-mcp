@@ -5,6 +5,8 @@ from tools.http_utils import secure_request, get_client, delay
 import logging
 logger = logging.getLogger("agy")
 
+
+
 @mcp.tool()
 async def log_injection_test(url: str, target_id: int, params: dict = None) -> dict:
     """Checks for log injection by feeding CRLF characters in inputs."""
@@ -128,6 +130,35 @@ async def sensitive_data_in_logs_check(url: str, target_id: int) -> dict:
         "recommendations": ["Transmit passwords, tokens, and PII inside POST request bodies (application/json or multipart/form-data) rather than URL query variables."]
     }
 
+_ENDPOINT_FINGERPRINTS = {
+    "/actuator": ["_links", '"health"', '"beans"'],
+    "/actuator/env": ["propertySources", "activeProfiles", '"env"'],
+    "/actuator/heapdump": None,
+    "/phpinfo.php": ["phpinfo()", "PHP Version", "PHP License", "PHP Credits"],
+    "/debug": None,
+    "/metrics": ["# HELP", "# TYPE"],
+    "/health": ['"status"', '"UP"', '"DOWN"'],
+    "/server-status": ["Apache Server Status", "Total Accesses"],
+}
+
+
+def _content_matches_endpoint(ep: str, res) -> bool:
+    """Verifikasi body/Content-Type response benar-benar cocok dengan endpoint
+    yang diharapkan -- mencegah false positive dari soft-404 (custom error
+    page atau SPA fallback yang return status 200 untuk semua path)."""
+    fingerprints = _ENDPOINT_FINGERPRINTS.get(ep)
+
+    if ep == "/actuator/heapdump":
+        content_type = res.headers.get("content-type", "")
+        return "application/octet-stream" in content_type or len(res.content) > 100_000
+
+    if fingerprints is None:
+        return False
+
+    body = res.text[:5000]
+    return any(fp in body for fp in fingerprints)
+
+
 @mcp.tool()
 async def check_debug_endpoints(base_url: str, target_id: int) -> dict:
     """Checks for exposed logging, metric, and debug endpoints."""
@@ -138,24 +169,31 @@ async def check_debug_endpoints(base_url: str, target_id: int) -> dict:
         "/metrics", "/health", "/server-status", "/phpinfo.php"
     ]
     found = []
-    
+
     async with get_client() as client:
         for ep in endpoints:
             target = base_url.rstrip("/") + ep
             try:
                 res = await secure_request(client, "GET", target, target_id=target_id)
                 if res.status_code == 200:
+                    content_verified = _content_matches_endpoint(ep, res)
                     found.append({
                         "path": ep,
                         "status_code": res.status_code,
+                        "content_verified": content_verified,
                         "sensitive_data": "Exposed endpoint details" if ep != "/health" else "Public info",
-                        "severity": "High" if "actuator" in ep or "phpinfo" in ep else "Low"
+                        "severity": (
+                            "High" if content_verified and ("actuator" in ep or "phpinfo" in ep)
+                            else "Low" if content_verified
+                            else "Info (unverified - manual review required)"
+                        ),
                     })
             except Exception as e:
                 logger.debug("Error checking debug endpoint %s at %s: %s", ep, base_url, e)
             await delay()
-                
-    vulnerable = len(found) > 0
+
+    verified_found = [f for f in found if f.get("content_verified")]
+    vulnerable = len(verified_found) > 0
     if vulnerable and target_id is not None:
         save_finding(
             target_id=target_id,
@@ -165,11 +203,12 @@ async def check_debug_endpoints(base_url: str, target_id: int) -> dict:
             severity="High",
             url=base_url,
             description="Exposed debug or admin endpoints containing system environment data.",
-            evidence=str(found)
+            evidence=str(verified_found)
         )
 
     return {
         "found": found,
         "critical_count": sum(1 for f in found if f["severity"] == "High"),
-        "vulnerable": vulnerable
+        "verified_vulnerable": verified_found,
+        "vulnerable": vulnerable,
     }

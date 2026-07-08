@@ -148,7 +148,11 @@ async def exposed_files_check(base_url: str, target_id: int) -> dict:
                     is_sensitive = False
                     if ".env" in f and any(k in res.text for k in ["DB_", "API_", "KEY", "SECRET", "PASSWORD"]):
                         is_sensitive = True
-                    elif ".git/config" in f or "wp-config" in f:
+                    elif ".git/config" in f and ("[core]" in res.text or "repositoryformatversion" in res.text):
+                        is_sensitive = True
+                    elif "wp-config" in f and ("DB_NAME" in res.text or "define(" in res.text):
+                        is_sensitive = True
+                    elif "phpinfo.php" in f and ("phpinfo()" in res.text or "PHP Version" in res.text):
                         is_sensitive = True
                         
                     exposed.append({
@@ -161,7 +165,7 @@ async def exposed_files_check(base_url: str, target_id: int) -> dict:
                 logger.debug("Exposed file check failed for %s: %s", f, e)
                 
     critical_count = sum(1 for e in exposed if e["sensitive"])
-    vulnerable = len(exposed) > 0
+    vulnerable = critical_count > 0
     
     if vulnerable:
         save_finding(
